@@ -6,6 +6,7 @@ const express = require('express');
 const path = require('node:path');
 const db = require('./db');
 const googleAuth = require('./google-auth');
+const adminService = require('./admin-service');
 const { generateSlots } = require('./slots');
 const { buildIcs, buildWhatsappLink } = require('./format');
 const { DateTime } = require('luxon');
@@ -432,6 +433,83 @@ app.get('/api/admin/vets/:vetId/appointments', googleAuth.requireAuth, async (re
       symptoms: a.symptoms,
       meetLink: a.meet_link,
     })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// ADMIN ROUTES (Protegidas)
+// ============================================
+
+app.post('/api/admin/invite', googleAuth.requireAdmin, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    const result = await adminService.inviteVet(req.adminId, email);
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/stats', googleAuth.requireAdmin, async (req, res) => {
+  try {
+    const stats = await adminService.getAdminStats();
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/vets', googleAuth.requireAdmin, async (req, res) => {
+  try {
+    const vets = await adminService.listVetersAdmin(req.adminId);
+    res.json(vets.map(v => ({
+      id: v.id,
+      email: v.email,
+      name: v.name,
+      specialty: v.specialty,
+      whatsapp: v.whatsapp,
+      location: v.location,
+      picture: v.picture,
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/appointments', googleAuth.requireAdmin, async (req, res) => {
+  try {
+    // Para admin, mostrar TODAS las citas
+    const { data, error } = await db.supabase
+      .from('appointments')
+      .select(`
+        *,
+        vets:vet_id(name, email),
+        triage_forms(*)
+      `)
+      .eq('status', 'booked')
+      .order('start_ms');
+
+    if (error) throw error;
+
+    const appointments = data.map(a => ({
+      id: a.id,
+      vet: a.vets?.name || 'Unknown',
+      vetEmail: a.vets?.email,
+      tutorName: a.tutor_name,
+      tutorWhatsapp: a.tutor_whatsapp,
+      animalName: a.animal_name,
+      species: a.species,
+      startMs: a.start_ms,
+      urgency: a.urgency,
+      symptoms: a.symptoms,
+      meetLink: a.meet_link,
+    }));
+
+    res.json(appointments);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

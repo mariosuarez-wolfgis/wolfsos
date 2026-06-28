@@ -323,6 +323,47 @@ async function addTimeOff(vetId, startMs, endMs, reason) {
   return data;
 }
 
+// --- INVITATIONS ---
+
+async function createInvitation(data) {
+  const { data: result, error } = await supabase
+    .from('vet_invitations')
+    .insert([{
+      id: uuidv4(),
+      token: data.token,
+      email: data.email,
+      invited_by: data.invitedBy,
+    }])
+    .select()
+    .single();
+  if (error) throw error;
+  return result;
+}
+
+async function getInvitationByToken(token) {
+  const { data, error } = await supabase
+    .from('vet_invitations')
+    .select('*')
+    .eq('token', token)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data || null;
+}
+
+async function updateInvitation(token, updates) {
+  const { error } = await supabase
+    .from('vet_invitations')
+    .update(updates)
+    .eq('token', token);
+  if (error) throw error;
+}
+
+async function getAdminStats() {
+  const { data, error } = await supabase.rpc('get_admin_stats');
+  if (error) throw error;
+  return data || {};
+}
+
 module.exports = {
   supabase,
   // Vets
@@ -352,4 +393,9 @@ module.exports = {
   replaceRules,
   getTimeOff,
   addTimeOff,
+  // Invitations
+  createInvitation,
+  getInvitationByToken,
+  updateInvitation,
+  getAdminStats,
 };
