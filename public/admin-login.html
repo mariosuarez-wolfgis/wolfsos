@@ -66,13 +66,13 @@
 
     <div style="border-top: 1px solid #ddd; margin: 20px 0; padding: 20px 0;">
       <p style="color: #666; font-size: 0.85rem; margin-bottom: 15px;">
-        ¿Primera vez? Usa tu contraseña de administrador
+        O usa tu contraseña de administrador
       </p>
       <div style="display: flex; gap: 10px;">
-        <input type="password" id="setupPassword" placeholder="Contraseña admin" style="flex: 1; padding: 10px; border: 1.5px solid #ddd; border-radius: 6px;">
-        <button id="setupBtn" style="background: #2d6a4f; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">Setup</button>
+        <input type="password" id="adminPassword" placeholder="Contraseña admin" style="flex: 1; padding: 10px; border: 1.5px solid #ddd; border-radius: 6px;">
+        <button id="passwordLoginBtn" style="background: #2d6a4f; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">Entrar</button>
       </div>
-      <div id="setupError" class="error" style="display: none;"></div>
+      <div id="passwordError" class="error" style="display: none;"></div>
     </div>
   </div>
 
@@ -140,10 +140,10 @@
       // El href ya está configurado, dejar que el navegador siga el enlace
     });
 
-    // Setup inicial
-    document.getElementById('setupBtn').addEventListener('click', async () => {
-      const password = document.getElementById('setupPassword').value;
-      const errEl = document.getElementById('setupError');
+    // Login por contraseña
+    document.getElementById('passwordLoginBtn').addEventListener('click', async () => {
+      const password = document.getElementById('adminPassword').value;
+      const errEl = document.getElementById('passwordError');
       errEl.style.display = 'none';
 
       if (!password) {
@@ -153,7 +153,7 @@
       }
 
       try {
-        const res = await fetch(`${API}/api/admin/setup`, {
+        const res = await fetch(`${API}/api/admin/login-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password })
