@@ -63,6 +63,17 @@
       🔐 Ingresar con Google
     </button>
     <div id="loginError" class="error" style="display: none;"></div>
+
+    <div style="border-top: 1px solid #ddd; margin: 20px 0; padding: 20px 0;">
+      <p style="color: #666; font-size: 0.85rem; margin-bottom: 15px;">
+        ¿Primera vez? Usa tu contraseña de administrador
+      </p>
+      <div style="display: flex; gap: 10px;">
+        <input type="password" id="setupPassword" placeholder="Contraseña admin" style="flex: 1; padding: 10px; border: 1.5px solid #ddd; border-radius: 6px;">
+        <button id="setupBtn" style="background: #2d6a4f; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">Setup</button>
+      </div>
+      <div id="setupError" class="error" style="display: none;"></div>
+    </div>
   </div>
 
   <div id="loadingScreen" style="display: none; padding: 40px 0;">
@@ -127,6 +138,38 @@
     initGoogleAuth();
     document.getElementById('googleLoginBtn').addEventListener('click', (e) => {
       // El href ya está configurado, dejar que el navegador siga el enlace
+    });
+
+    // Setup inicial
+    document.getElementById('setupBtn').addEventListener('click', async () => {
+      const password = document.getElementById('setupPassword').value;
+      const errEl = document.getElementById('setupError');
+      errEl.style.display = 'none';
+
+      if (!password) {
+        errEl.textContent = 'Ingresa la contraseña';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/api/admin/setup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+
+        if (data.token) {
+          localStorage.setItem('adminToken', data.token);
+          location.href = '/admin-panel.html';
+        } else if (data.error) {
+          throw new Error(data.error);
+        }
+      } catch (err) {
+        errEl.textContent = `Error: ${err.message}`;
+        errEl.style.display = 'block';
+      }
     });
   }
 </script>

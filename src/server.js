@@ -126,6 +126,53 @@ app.post('/api/vets/login', async (req, res) => {
 });
 
 // ============================================
+// ADMIN SETUP (Primer acceso - contraseña)
+// ============================================
+
+app.post('/api/admin/setup', async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Password required' });
+
+    const adminPassword = process.env.ADMIN_TOKEN || 'yJUC9awDLms6zBXRrViw';
+    if (password !== adminPassword) {
+      return res.status(403).json({ error: 'Invalid password' });
+    }
+
+    // Verificar si ya existe admin
+    const adminEmail = process.env.ADMIN_EMAIL || 'patitas@wolfsos.com';
+    const existing = await db.getAdmin(adminEmail);
+    if (existing) {
+      return res.status(400).json({ error: 'Admin already exists. Use Google OAuth to login.' });
+    }
+
+    // Crear admin inicial
+    const admin = await db.createAdmin(adminEmail, 'Administrador Wolf SOS', null);
+
+    // Generar token JWT
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+    const adminToken = jwt.sign(
+      { adminId: admin.id, email: admin.email, role: 'admin' },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token: adminToken,
+      admin: {
+        id: admin.id,
+        email: admin.email,
+        name: admin.name,
+      },
+      message: 'Admin creado exitosamente'
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ============================================
 // ADMIN LOGIN (Google OAuth)
 // ============================================
 
