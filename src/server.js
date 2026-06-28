@@ -34,7 +34,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 // GOOGLE OAUTH ROUTES
 // ============================================
 
-app.get('/auth/google', (req, res) => {
+app.get('/auth/google/url', (req, res) => {
   const url = googleAuth.getGoogleAuthUrl();
   res.json({ authUrl: url });
 });

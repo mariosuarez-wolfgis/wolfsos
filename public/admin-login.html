@@ -82,21 +82,53 @@
     location.href = '/admin-panel.html';
   }
 
-  // Google Sign-In
-  document.getElementById('googleLoginBtn').addEventListener('click', async () => {
-    document.getElementById('loadingScreen').style.display = 'block';
-    document.getElementById('loginForm').style.display = 'none';
+  // Google Sign-In con OAuth real
+  async function initGoogleAuth() {
+    try {
+      const response = await fetch(`${API}/auth/google/url`);
+      const data = await response.json();
+      document.getElementById('googleLoginBtn').href = data.authUrl;
+    } catch (err) {
+      console.error('Error initializing Google Auth:', err);
+    }
+  }
 
-    // Para MVP: mostrar instrucciones
-    // En producción: usar Google OAuth flow completo
-    alert('En producción:\n1. Redirige a Google OAuth\n2. Google devuelve código\n3. POST /api/admin/login con código\n4. Recibes JWT\n5. Guardas en localStorage\n6. Redirige a admin-panel.html');
+  // Si viene del callback de Google
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
 
-    // Simulación: crear token válido para testing
-    // EN PRODUCCIÓN: usar Google OAuth real
-    const testToken = 'test-admin-token-' + Date.now();
-    localStorage.setItem('adminToken', testToken);
-    location.href = '/admin-panel.html';
-  });
+  if (code) {
+    // Google devolvió un código, intercambiarlo por token
+    (async () => {
+      document.getElementById('loadingScreen').style.display = 'block';
+      document.getElementById('loginForm').style.display = 'none';
+      try {
+        const res = await fetch(`${API}/api/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+        if (data.token) {
+          localStorage.setItem('adminToken', data.token);
+          location.href = '/admin-panel.html';
+        } else {
+          throw new Error(data.error || 'Login failed');
+        }
+      } catch (err) {
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('loadingScreen').style.display = 'none';
+        document.getElementById('loginError').textContent = err.message;
+        document.getElementById('loginError').style.display = 'block';
+      }
+    })();
+  } else {
+    // Inicializar botón de Google
+    initGoogleAuth();
+    document.getElementById('googleLoginBtn').addEventListener('click', (e) => {
+      // El href ya está configurado, dejar que el navegador siga el enlace
+    });
+  }
 </script>
 </body>
 </html>

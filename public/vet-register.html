@@ -133,24 +133,93 @@
     document.getElementById('registerError').style.display = 'block';
   }
 
-  document.getElementById('registerForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const specialty = document.getElementById('specialty').value;
-    const licenseNumber = document.getElementById('licenseNumber').value;
-    const whatsapp = document.getElementById('whatsapp').value;
-    const location = document.getElementById('location').value;
-    const bio = document.getElementById('bio').value;
-
-    if (!specialty || !licenseNumber || !whatsapp || !location) {
-      showError('Completa todos los campos obligatorios');
-      return;
+  // Google Sign-In para registro
+  async function initGoogleAuthRegister() {
+    try {
+      const response = await fetch(`${API}/auth/google/url`);
+      const data = await response.json();
+      // Agregar parámetro de invitación si existe
+      const authUrl = new URL(data.authUrl);
+      authUrl.searchParams.append('state', invitationToken || '');
+      window.googleAuthUrl = authUrl.toString();
+    } catch (err) {
+      console.error('Error initializing Google Auth:', err);
+      showError('Error al inicializar autenticación');
     }
+  }
 
-    // Para simplificar: usar Google OAuth en producción
-    // Por ahora, simular con un mensaje
-    showSuccess('Por favor usa Google OAuth para registrarte (implementación en producción)');
-  });
+  // Si viene del callback de Google
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+
+  if (code) {
+    // Google devolvió código, intercambiar por token y registrar
+    (async () => {
+      const specialty = localStorage.getItem('registerSpecialty') || '';
+      const licenseNumber = localStorage.getItem('registerLicense') || '';
+      const whatsapp = localStorage.getItem('registerWhatsapp') || '';
+      const location_val = localStorage.getItem('registerLocation') || '';
+      const bio = localStorage.getItem('registerBio') || '';
+
+      try {
+        const res = await fetch(`${API}/api/vets/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code,
+            specialty,
+            licenseNumber,
+            whatsapp,
+            location: location_val,
+            bio,
+            invitationToken
+          })
+        });
+        const data = await res.json();
+        if (data.token) {
+          localStorage.setItem('vetToken', data.token);
+          localStorage.removeItem('registerSpecialty');
+          localStorage.removeItem('registerLicense');
+          localStorage.removeItem('registerWhatsapp');
+          localStorage.removeItem('registerLocation');
+          localStorage.removeItem('registerBio');
+          showSuccess('Registro completado exitosamente');
+        } else {
+          throw new Error(data.error || 'Registration failed');
+        }
+      } catch (err) {
+        showError(err.message);
+      }
+    })();
+  } else {
+    // Inicializar
+    initGoogleAuthRegister();
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const specialty = document.getElementById('specialty').value;
+      const licenseNumber = document.getElementById('licenseNumber').value;
+      const whatsapp = document.getElementById('whatsapp').value;
+      const location_val = document.getElementById('location').value;
+      const bio = document.getElementById('bio').value;
+
+      if (!specialty || !licenseNumber || !whatsapp || !location_val) {
+        showError('Completa todos los campos obligatorios');
+        return;
+      }
+
+      // Guardar datos en localStorage y redirigir a Google OAuth
+      localStorage.setItem('registerSpecialty', specialty);
+      localStorage.setItem('registerLicense', licenseNumber);
+      localStorage.setItem('registerWhatsapp', whatsapp);
+      localStorage.setItem('registerLocation', location_val);
+      localStorage.setItem('registerBio', bio);
+
+      // Redirigir a Google OAuth
+      location.href = window.googleAuthUrl;
+    });
+  }
 
   function showError(msg) {
     const el = document.getElementById('registerError');
