@@ -1,0 +1,34 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# BD (no versionar datos)
+agenda.db
+agenda.db-shm
+agenda.db-wal
+*.db
+*.db-shm
+*.db-wal
+
+# Backups
+*.bak
+*.backup
+*.tmp
+
+# Entorno (secretos)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema
+.DS_Store
+Thumbs.db

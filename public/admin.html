@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wolf SOS — Panel veterinario</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 20px rgba(0,0,0,.08);
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    .header {
+      background: #1b4332;
+      color: #fff;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 { font-size: 1.1rem; font-weight: 700; }
+    .header span { font-size: .8rem; opacity: .7; }
+    .logout-btn { background: #d32f2f; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: .8rem; font-weight: 600; }
+    .logout-btn:hover { background: #c62828; }
+
+    nav {
+      display: flex;
+      border-bottom: 1px solid #e8e8e8;
+    }
+    .tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      font-size: .85rem;
+      font-weight: 600;
+      color: #666;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      transition: color .15s;
+    }
+    .tab.active { color: #1b4332; border-bottom-color: #1b4332; }
+
+    .panel { display: none; padding: 24px; }
+    .panel.visible { display: block; }
+
+    #login-screen {
+      padding: 32px 24px;
+    }
+    #login-screen h2 { margin-bottom: 20px; }
+    .login-form { display: flex; flex-direction: column; gap: 14px; }
+    label span { font-size: .8rem; font-weight: 600; color: #444; display: block; margin-bottom: 4px; }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #d0d0d0;
+      border-radius: 8px;
+      font-size: .9rem;
+      font-family: inherit;
+    }
+    input:focus, select:focus { outline: none; border-color: #1b4332; }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: .95rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-primary { background: #1b4332; color: #fff; }
+    .btn-primary:hover { background: #2d6a4f; }
+    .btn-sm {
+      display: inline-block;
+      width: auto;
+      padding: 7px 14px;
+      font-size: .8rem;
+      border-radius: 7px;
+    }
+    .btn-danger { background: #e74c3c; color: #fff; }
+
+    .schedule-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .day-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+    .day-name { font-size: .85rem; font-weight: 600; }
+    .time-pair { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: center; }
+    .time-pair span { text-align: center; font-size: .75rem; color: #888; }
+    .range-row { display: flex; flex-direction: column; gap: 6px; }
+
+    .timeoff-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .appt-list { display: flex; flex-direction: column; gap: 10px; }
+    .appt-card {
+      border: 1.5px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .appt-card .time { font-weight: 700; color: #1b4332; margin-bottom: 6px; }
+    .appt-card .info { font-size: .85rem; line-height: 1.6; color: #444; }
+    .appt-card .wa-link { display: inline-block; margin-top: 6px; font-size: .8rem; color: #25d366; font-weight: 600; text-decoration: none; }
+
+    .error-msg { color: #c0392b; font-size: .85rem; background: #fdf0ee; padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; }
+    .success-msg { color: #1b4332; font-size: .85rem; background: #f0faf4; padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #52b788; }
+    .loading { text-align: center; color: #888; padding: 20px; font-size: .9rem; }
+    .empty { text-align: center; color: #aaa; padding: 20px; font-size: .9rem; }
+
+    h2 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; }
+    h3 { font-size: .9rem; font-weight: 700; margin-bottom: 12px; color: #333; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div id="login-screen">
+    <h2>🐾 Wolf SOS — Panel de veterinario</h2>
+    <p style="font-size:.85rem;color:#666;margin-bottom:20px">Ingresa con tu email y contraseña</p>
+    <div id="login-error" class="error-msg" style="display:none"></div>
+    <div class="login-form">
+      <label><span>Email</span>
+        <input type="email" id="l-email" placeholder="tu@email.com">
+      </label>
+      <label><span>Contraseña</span>
+        <input type="password" id="l-password" placeholder="••••••••">
+      </label>
+      <button class="btn btn-primary" id="btn-login">Entrar</button>
+      <p style="font-size:.8rem;color:#999;text-align:center;margin-top:12px">
+        ¿No tienes cuenta? Contacta a Mi Gente Ve para registrarte
+      </p>
+    </div>
+  </div>
+
+  <div id="main-panel" style="display:none">
+    <div class="header">
+      <h1>🐾 Wolf SOS — Panel veterinario</h1>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span id="header-name"></span>
+        <button class="logout-btn" id="btn-logout">Salir</button>
+      </div>
+    </div>
+
+    <nav>
+      <button class="tab active" data-tab="tab-schedule">Horario</button>
+      <button class="tab" data-tab="tab-timeoff">Ausencias</button>
+      <button class="tab" data-tab="tab-appts">Mis citas</button>
+    </nav>
+
+    <div class="panel visible" id="tab-schedule">
+      <h2>Mi horario semanal</h2>
+      <p style="font-size:.8rem;color:#666;margin-bottom:16px">Hasta 2 rangos por día (en hora Venezuela). Deja vacío para marcar día libre.</p>
+      <div id="sched-error" class="error-msg" style="display:none"></div>
+      <div id="sched-success" class="success-msg" style="display:none"></div>
+      <div class="schedule-grid" id="schedule-grid"></div>
+      <button class="btn btn-primary" id="btn-save-sched">Guardar horario</button>
+    </div>
+
+    <div class="panel" id="tab-timeoff">
+      <h2>Bloquear ausencia</h2>
+      <div id="to-error" class="error-msg" style="display:none"></div>
+      <div id="to-success" class="success-msg" style="display:none"></div>
+      <div class="timeoff-form">
+        <div class="row2">
+          <label><span>Desde</span>
+            <input type="datetime-local" id="to-start">
+          </label>
+          <label><span>Hasta</span>
+            <input type="datetime-local" id="to-end">
+          </label>
+        </div>
+        <label><span>Motivo (opcional)</span>
+          <input type="text" id="to-reason" placeholder="Vacaciones, enfermedad…">
+        </label>
+        <button class="btn btn-primary" id="btn-add-timeoff">Bloquear horario</button>
+      </div>
+    </div>
+
+    <div class="panel" id="tab-appts">
+      <h2>Próximas citas</h2>
+      <div class="appt-list" id="appt-list"><div class="loading">Cargando…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = (() => {
+    const p = new URLSearchParams(location.search);
+    const fromParam = p.get('api');
+    if (fromParam) return fromParam;
+
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      return `http://${location.hostname}:${location.port}`;
+    }
+    return `${location.protocol}//${location.host}`;
+  })();
+
+  const DAYS = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const MODALITY = { video: 'Videollamada', audio: 'Llamada de voz', whatsapp: 'WhatsApp' };
+
+  let authToken = '';
+  let vetId = '';
+  let vetName = '';
+
+  // --- LOGIN ---
+  document.getElementById('btn-login').addEventListener('click', async () => {
+    const email = document.getElementById('l-email').value.trim();
+    const password = document.getElementById('l-password').value.trim();
+    if (!email || !password) { showErr('login-error', 'Completa ambos campos.'); return; }
+
+    try {
+      const res = await fetch(`${API}/api/vets/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error de login');
+
+      authToken = data.token;
+      vetId = data.vet.id;
+      vetName = data.vet.name;
+
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('main-panel').style.display = 'block';
+      document.getElementById('header-name').textContent = vetName;
+      hideErr('login-error');
+
+      buildScheduleGrid();
+      await loadSchedule();
+    } catch (e) {
+      showErr('login-error', e.message);
+    }
+  });
+
+  // --- LOGOUT ---
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    authToken = '';
+    vetId = '';
+    vetName = '';
+    document.getElementById('login-screen').style.display = 'block';
+    document.getElementById('main-panel').style.display = 'none';
+    document.getElementById('l-email').value = '';
+    document.getElementById('l-password').value = '';
+  });
+
+  function authHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`
+    };
+  }
+
+  // --- TABS ---
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('visible'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.tab).classList.add('visible');
+      if (tab.dataset.tab === 'tab-appts') loadAppts();
+    });
+  });
+
+  // --- HORARIO ---
+  function buildScheduleGrid() {
+    const grid = document.getElementById('schedule-grid');
+    grid.innerHTML = '';
+    for (let d = 1; d <= 7; d++) {
+      const row = document.createElement('div');
+      row.className = 'day-row';
+      row.innerHTML = `
+        <div class="day-name">${DAYS[d]}</div>
+        <div class="range-row">
+          <div class="time-pair">
+            <input type="time" id="d${d}r1s" placeholder="09:00">
+            <span>–</span>
+            <input type="time" id="d${d}r1e" placeholder="12:00">
+          </div>
+          <div class="time-pair">
+            <input type="time" id="d${d}r2s" placeholder="15:00">
+            <span>–</span>
+            <input type="time" id="d${d}r2e" placeholder="18:00">
+          </div>
+        </div>
+      `;
+      grid.appendChild(row);
+    }
+  }
+
+  async function loadSchedule() {
+    try {
+      const res = await fetch(`${API}/api/admin/vets/${vetId}/availability`, {
+        headers: authHeaders()
+      });
+      const data = await res.json();
+      const byDay = {};
+      data.rules.forEach(r => {
+        if (!byDay[r.weekday]) byDay[r.weekday] = [];
+        if (byDay[r.weekday].length < 2) byDay[r.weekday].push(r);
+      });
+      for (let d = 1; d <= 7; d++) {
+        const rules = byDay[d] || [];
+        [0, 1].forEach(i => {
+          const r = rules[i];
+          document.getElementById(`d${d}r${i+1}s`).value = r ? minToTime(r.startMin) : '';
+          document.getElementById(`d${d}r${i+1}e`).value = r ? minToTime(r.endMin) : '';
+        });
+      }
+    } catch (e) {
+      showErr('sched-error', 'No se pudo cargar el horario.');
+    }
+  }
+
+  document.getElementById('btn-save-sched').addEventListener('click', async () => {
+    hideErr('sched-error');
+    document.getElementById('sched-success').style.display = 'none';
+    const rules = [];
+    for (let d = 1; d <= 7; d++) {
+      for (let i = 1; i <= 2; i++) {
+        const s = document.getElementById(`d${d}r${i}s`).value;
+        const e = document.getElementById(`d${d}r${i}e`).value;
+        if (s && e) {
+          const startMin = timeToMin(s);
+          const endMin = timeToMin(e);
+          if (startMin >= endMin) {
+            showErr('sched-error', `${DAYS[d]} rango ${i}: inicio antes que fin.`);
+            return;
+          }
+          rules.push({ weekday: d, startMin, endMin });
+        }
+      }
+    }
+    try {
+      const res = await fetch(`${API}/api/admin/vets/${vetId}/availability`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ rules })
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      const suc = document.getElementById('sched-success');
+      suc.textContent = '✓ Horario guardado correctamente.';
+      suc.style.display = 'block';
+      setTimeout(() => suc.style.display = 'none', 3000);
+    } catch (e) {
+      showErr('sched-error', e.message);
+    }
+  });
+
+  // --- AUSENCIAS ---
+  document.getElementById('btn-add-timeoff').addEventListener('click', async () => {
+    hideErr('to-error');
+    document.getElementById('to-success').style.display = 'none';
+    const startVal = document.getElementById('to-start').value;
+    const endVal = document.getElementById('to-end').value;
+    if (!startVal || !endVal) { showErr('to-error', 'Completa las fechas.'); return; }
+    const startIso = new Date(startVal).toISOString();
+    const endIso = new Date(endVal).toISOString();
+    if (startIso >= endIso) { showErr('to-error', 'Inicio antes que fin.'); return; }
+    const reason = document.getElementById('to-reason').value.trim();
+    try {
+      const res = await fetch(`${API}/api/admin/vets/${vetId}/time-off`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ startIso, endIso, reason })
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      const suc = document.getElementById('to-success');
+      suc.textContent = '✓ Ausencia registrada.';
+      suc.style.display = 'block';
+      document.getElementById('to-start').value = '';
+      document.getElementById('to-end').value = '';
+      document.getElementById('to-reason').value = '';
+    } catch (e) {
+      showErr('to-error', e.message);
+    }
+  });
+
+  // --- CITAS ---
+  async function loadAppts() {
+    const list = document.getElementById('appt-list');
+    list.innerHTML = '<div class="loading">Cargando citas…</div>';
+    try {
+      const res = await fetch(`${API}/api/admin/vets/${vetId}/appointments`, {
+        headers: authHeaders()
+      });
+      const appts = await res.json();
+      if (!appts.length) { list.innerHTML = '<div class="empty">No tienes citas próximas.</div>'; return; }
+      list.innerHTML = '';
+      appts.forEach(a => {
+        const waText = encodeURIComponent(
+          `Hola ${a.tutorName}, te recuerdo tu consulta para ${a.animalName} mañana. ¿Confirmas?`
+        );
+        const waNum = (a.tutorWhatsapp || '').replace(/\D/g, '');
+        const card = document.createElement('div');
+        card.className = 'appt-card';
+        card.innerHTML = `
+          <div class="time">📅 ${a.localTime}</div>
+          <div class="info">
+            <strong>${a.animalName}</strong> (${a.species}) — ${a.tutorName}<br>
+            ${MODALITY[a.modality] || a.modality}
+            ${a.urgency ? ` · ⚠️ ${a.urgency}` : ''}
+            ${a.symptoms ? `<br><em>${a.symptoms}</em>` : ''}
+          </div>
+          ${waNum ? `<a class="wa-link" href="https://wa.me/${waNum}?text=${waText}" target="_blank">💬 Escribir</a>` : ''}
+        `;
+        list.appendChild(card);
+      });
+    } catch (e) {
+      list.innerHTML = '<div class="loading">Error al cargar citas.</div>';
+    }
+  }
+
+  // --- UTILS ---
+  function minToTime(m) {
+    const h = String(Math.floor(m / 60)).padStart(2, '0');
+    const mm = String(m % 60).padStart(2, '0');
+    return `${h}:${mm}`;
+  }
+  function timeToMin(t) {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  }
+  function showErr(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideErr(id) {
+    document.getElementById(id).style.display = 'none';
+  }
+</script>
+</body>
+</html>

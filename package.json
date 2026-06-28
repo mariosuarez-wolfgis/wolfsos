@@ -1,0 +1,22 @@
+{
+  "name": "agenda-vet-migenteve",
+  "version": "1.0.0",
+  "description": "Sistema de agenda de telemedicina veterinaria para Mi Gente Ve",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "luxon": "^3.4.4",
+    "@supabase/supabase-js": "^2.39.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "dotenv": "^16.3.1"
+  },
+  "license": "MIT"
+}

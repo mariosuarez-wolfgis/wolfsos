@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wolf SOS — Agendar consulta veterinaria</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 20px rgba(0,0,0,.08);
+      width: 100%;
+      max-width: 560px;
+      overflow: hidden;
+    }
+
+    .header {
+      background: #2d6a4f;
+      color: #fff;
+      padding: 24px;
+    }
+    .header h1 { font-size: 1.25rem; font-weight: 700; }
+    .header p  { font-size: .875rem; opacity: .85; margin-top: 4px; }
+
+    .steps {
+      display: flex;
+      border-bottom: 1px solid #e8e8e8;
+    }
+    .step {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      font-size: .75rem;
+      font-weight: 600;
+      color: #999;
+      border-bottom: 3px solid transparent;
+    }
+    .step.active { color: #2d6a4f; border-color: #2d6a4f; }
+    .step.done   { color: #52b788; border-color: #52b788; }
+
+    .section { display: none; padding: 24px; }
+    .section.visible { display: block; }
+
+    h2 { font-size: 1rem; font-weight: 600; margin-bottom: 16px; }
+
+    .vet-list { display: flex; flex-direction: column; gap: 10px; }
+    .vet-card {
+      border: 2px solid #e8e8e8;
+      border-radius: 10px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .vet-card:hover  { border-color: #52b788; background: #f0faf4; }
+    .vet-card.sel    { border-color: #2d6a4f; background: #f0faf4; }
+    .vet-card strong { font-size: .95rem; }
+    .vet-card span   { display: block; font-size: .8rem; color: #666; margin-top: 2px; }
+
+    .slots-grid { display: flex; flex-direction: column; gap: 8px; }
+    .day-group  { }
+    .day-label  { font-size: .75rem; font-weight: 700; text-transform: uppercase;
+                  color: #666; margin-bottom: 6px; letter-spacing: .05em; }
+    .slots-row  { display: flex; flex-wrap: wrap; gap: 8px; }
+    .slot-btn {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 2px solid #d0e8da;
+      background: #f0faf4;
+      color: #2d6a4f;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .12s, border-color .12s;
+    }
+    .slot-btn:hover { background: #d0e8da; border-color: #52b788; }
+    .slot-btn.sel   { background: #2d6a4f; color: #fff; border-color: #2d6a4f; }
+
+    .form-grid { display: flex; flex-direction: column; gap: 14px; }
+    label { display: block; }
+    label span { font-size: .8rem; font-weight: 600; color: #444; display: block; margin-bottom: 4px; }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #d0d0d0;
+      border-radius: 8px;
+      font-size: .9rem;
+      font-family: inherit;
+      transition: border-color .15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #2d6a4f;
+    }
+    textarea { resize: vertical; min-height: 70px; }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-primary   { background: #2d6a4f; color: #fff; }
+    .btn-primary:hover { background: #1b4332; }
+    .btn-secondary { background: #f0faf4; color: #2d6a4f; border: 2px solid #d0e8da; margin-top: 8px; }
+    .btn-secondary:hover { background: #d0e8da; }
+    .btn-wa { background: #25d366; color: #fff; margin-top: 0; }
+    .btn-wa:hover { background: #1da851; }
+    .btn-ics { background: #4a90e2; color: #fff; }
+    .btn-ics:hover { background: #357abd; }
+
+    .confirm-box {
+      background: #f0faf4;
+      border: 2px solid #52b788;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .confirm-box h3 { color: #2d6a4f; margin-bottom: 10px; }
+    .confirm-box p  { font-size: .9rem; line-height: 1.6; }
+    .confirm-box strong { color: #1b4332; }
+
+    .actions { display: flex; flex-direction: column; gap: 10px; }
+
+    .error-msg { color: #c0392b; font-size: .85rem; background: #fdf0ee; padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; }
+    .loading   { text-align: center; color: #666; padding: 24px; font-size: .9rem; }
+    .empty     { text-align: center; color: #999; padding: 24px; font-size: .9rem; }
+
+    .summary {
+      font-size: .8rem;
+      background: #f5f5f0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <h1>🐾 Wolf SOS — Agendar consulta</h1>
+    <p>Atención por telemedicina, rápido y sin complicaciones</p>
+  </div>
+
+  <div class="steps">
+    <div class="step active" id="step1-tab">1. Veterinario</div>
+    <div class="step" id="step2-tab">2. Horario</div>
+    <div class="step" id="step3-tab">3. Tus datos</div>
+  </div>
+
+  <!-- Paso 1: elegir veterinario -->
+  <div class="section visible" id="step1">
+    <h2>¿Con quién quieres hablar?</h2>
+    <div id="vet-error" class="error-msg" style="display:none"></div>
+    <div class="vet-list" id="vet-list"><div class="loading">Cargando veterinarios…</div></div>
+    <br>
+    <button class="btn btn-primary" id="btn-to-step2" disabled>Continuar →</button>
+  </div>
+
+  <!-- Paso 2: elegir hueco -->
+  <div class="section" id="step2">
+    <div class="summary" id="step2-summary"></div>
+    <h2>¿Cuándo te viene bien?</h2>
+    <div id="slots-error" class="error-msg" style="display:none"></div>
+    <div class="slots-grid" id="slots-grid"><div class="loading">Cargando horarios…</div></div>
+    <br>
+    <button class="btn btn-primary" id="btn-to-step3" disabled>Continuar →</button>
+    <button class="btn btn-secondary" id="btn-back-1">← Cambiar veterinario</button>
+  </div>
+
+  <!-- Paso 3: datos del tutor -->
+  <div class="section" id="step3">
+    <div class="summary" id="step3-summary"></div>
+    <h2>Tus datos y los de tu mascota</h2>
+    <div id="form-error" class="error-msg" style="display:none"></div>
+    <form class="form-grid" id="booking-form" novalidate>
+      <label><span>Tu nombre *</span>
+        <input type="text" id="f-name" placeholder="Ej. María González" required>
+      </label>
+      <label><span>Tu WhatsApp *</span>
+        <input type="tel" id="f-wa" placeholder="+584141234567" required>
+      </label>
+      <div class="row2">
+        <label><span>Nombre del animal *</span>
+          <input type="text" id="f-animal" placeholder="Toby" required>
+        </label>
+        <label><span>Especie *</span>
+          <select id="f-species" required>
+            <option value="">Seleccionar…</option>
+            <option>Perro</option>
+            <option>Gato</option>
+            <option>Ave</option>
+            <option>Conejo</option>
+            <option>Otro</option>
+          </select>
+        </label>
+      </div>
+      <label><span>Modalidad *</span>
+        <select id="f-modality" required>
+          <option value="">Seleccionar…</option>
+        </select>
+      </label>
+      <label><span>Urgencia percibida</span>
+        <select id="f-urgency">
+          <option value="">No sé / No aplica</option>
+          <option>Leve</option>
+          <option>Moderado</option>
+          <option>Grave</option>
+          <option>Emergencia</option>
+        </select>
+      </label>
+      <label><span>Síntomas o motivo de la consulta</span>
+        <textarea id="f-symptoms" placeholder="Describe brevemente qué le pasa a tu mascota…"></textarea>
+      </label>
+      <button type="submit" class="btn btn-primary">Confirmar cita ✓</button>
+      <button type="button" class="btn btn-secondary" id="btn-back-2">← Cambiar horario</button>
+    </form>
+  </div>
+
+  <!-- Confirmación -->
+  <div class="section" id="step4">
+    <div class="confirm-box" id="confirm-detail">
+      <h3>✅ ¡Cita confirmada!</h3>
+      <p id="confirm-text"></p>
+    </div>
+    <div class="actions">
+      <button class="btn btn-wa" id="btn-wa">💬 Confirmar por WhatsApp</button>
+      <a class="btn btn-ics" id="btn-ics" download>📅 Descargar para mi calendario</a>
+      <button class="btn btn-secondary" id="btn-new">Agendar otra cita</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = (() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('api') || '';
+  })();
+
+  let selectedVet = null;
+  let selectedSlot = null;
+  let bookingResult = null;
+
+  // --- Inicializar ---
+  async function init() {
+    try {
+      const vets = await fetchJson('/api/vets');
+      renderVets(vets);
+    } catch (e) {
+      showError('vet-error', 'No se pudo cargar la lista de veterinarios. Intenta de nuevo.');
+    }
+  }
+
+  function fetchJson(path) {
+    return fetch(API + path).then(r => {
+      if (!r.ok) return r.json().then(d => Promise.reject(new Error(d.error || r.statusText)));
+      return r.json();
+    });
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideError(id) {
+    document.getElementById(id).style.display = 'none';
+  }
+
+  // --- Paso 1: Vets ---
+  function renderVets(vets) {
+    const list = document.getElementById('vet-list');
+    if (!vets.length) { list.innerHTML = '<div class="empty">No hay veterinarios disponibles por el momento.</div>'; return; }
+    list.innerHTML = '';
+    vets.forEach(v => {
+      const card = document.createElement('div');
+      card.className = 'vet-card';
+      card.innerHTML = `<strong>${v.name}</strong><span>${v.specialty || ''}</span>`;
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.vet-card').forEach(c => c.classList.remove('sel'));
+        card.classList.add('sel');
+        selectedVet = { ...v };
+        document.getElementById('btn-to-step2').disabled = false;
+      });
+      list.appendChild(card);
+    });
+  }
+
+  document.getElementById('btn-to-step2').addEventListener('click', async () => {
+    goTo(2);
+    hideError('slots-error');
+    const grid = document.getElementById('slots-grid');
+    grid.innerHTML = '<div class="loading">Cargando horarios disponibles…</div>';
+    document.getElementById('btn-to-step3').disabled = true;
+    document.getElementById('step2-summary').textContent = `Veterinario: ${selectedVet.name}`;
+
+    // Llenar modalidades para paso 3
+    const sel = document.getElementById('f-modality');
+    sel.innerHTML = '<option value="">Seleccionar…</option>';
+    (selectedVet.modalities || []).forEach(m => {
+      const labels = { video: 'Videollamada', audio: 'Llamada de voz', whatsapp: 'WhatsApp' };
+      sel.innerHTML += `<option value="${m}">${labels[m] || m}</option>`;
+    });
+
+    try {
+      const slots = await fetchJson(`/api/vets/${selectedVet.id}/slots?days=7`);
+      renderSlots(slots);
+    } catch (e) {
+      showError('slots-error', 'No se pudieron cargar los horarios. Intenta de nuevo.');
+      grid.innerHTML = '';
+    }
+  });
+
+  function renderSlots(slots) {
+    const grid = document.getElementById('slots-grid');
+    if (!slots.length) {
+      grid.innerHTML = '<div class="empty">No hay horarios disponibles en los próximos 7 días.</div>';
+      return;
+    }
+
+    // Agrupar por día
+    const byDay = {};
+    slots.forEach(s => {
+      const day = s.localTime.split(',')[0];
+      if (!byDay[day]) byDay[day] = [];
+      byDay[day].push(s);
+    });
+
+    grid.innerHTML = '';
+    Object.entries(byDay).forEach(([day, daySlots]) => {
+      const group = document.createElement('div');
+      group.className = 'day-group';
+      group.innerHTML = `<div class="day-label">${day}</div><div class="slots-row" id="row-${encodeURIComponent(day)}"></div>`;
+      grid.appendChild(group);
+
+      const row = group.querySelector('.slots-row');
+      daySlots.forEach(s => {
+        const time = s.localTime.split(',')[1]?.trim() || '';
+        const btn = document.createElement('button');
+        btn.className = 'slot-btn';
+        btn.textContent = time;
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('sel'));
+          btn.classList.add('sel');
+          selectedSlot = s;
+          document.getElementById('btn-to-step3').disabled = false;
+        });
+        row.appendChild(btn);
+      });
+    });
+  }
+
+  document.getElementById('btn-to-step3').addEventListener('click', () => {
+    goTo(3);
+    document.getElementById('step3-summary').textContent =
+      `${selectedVet.name} — ${selectedSlot.localTime}`;
+  });
+
+  document.getElementById('btn-back-1').addEventListener('click', () => goTo(1));
+  document.getElementById('btn-back-2').addEventListener('click', () => goTo(2));
+
+  // --- Paso 3: Formulario ---
+  document.getElementById('booking-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    hideError('form-error');
+
+    const tutorName = document.getElementById('f-name').value.trim();
+    const tutorWhatsapp = document.getElementById('f-wa').value.trim();
+    const animalName = document.getElementById('f-animal').value.trim();
+    const species = document.getElementById('f-species').value;
+    const modality = document.getElementById('f-modality').value;
+    const urgency = document.getElementById('f-urgency').value;
+    const symptoms = document.getElementById('f-symptoms').value.trim();
+
+    if (!tutorName || !tutorWhatsapp || !animalName || !species || !modality) {
+      showError('form-error', 'Por favor completa todos los campos obligatorios (*).');
+      return;
+    }
+
+    const btn = e.target.querySelector('[type=submit]');
+    btn.disabled = true;
+    btn.textContent = 'Reservando…';
+
+    try {
+      const res = await fetch(API + '/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vetId: selectedVet.id,
+          startIso: selectedSlot.startIso,
+          modality, tutorName, tutorWhatsapp, animalName, species, urgency, symptoms,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al reservar');
+      bookingResult = data;
+      showConfirmation(data);
+    } catch (err) {
+      showError('form-error', err.message || 'Error al reservar. Intenta de nuevo.');
+      btn.disabled = false;
+      btn.textContent = 'Confirmar cita ✓';
+    }
+  });
+
+  function showConfirmation(data) {
+    goTo(4);
+    document.getElementById('confirm-text').innerHTML =
+      `<strong>${data.vet}</strong><br>` +
+      `📅 ${data.whenLocal} (hora Venezuela)<br>` +
+      `📱 Modalidad: ${modalityLabel(data.modality)}`;
+
+    document.getElementById('btn-wa').onclick = () => window.open(data.whatsappLink, '_blank');
+    const icsLink = document.getElementById('btn-ics');
+    icsLink.href = API + data.icsUrl;
+    icsLink.setAttribute('download', `cita-${data.id}.ics`);
+  }
+
+  document.getElementById('btn-new').addEventListener('click', () => {
+    selectedVet = null;
+    selectedSlot = null;
+    bookingResult = null;
+    document.getElementById('booking-form').reset();
+    document.querySelectorAll('.vet-card').forEach(c => c.classList.remove('sel'));
+    document.getElementById('btn-to-step2').disabled = true;
+    goTo(1);
+    init();
+  });
+
+  function goTo(n) {
+    [1,2,3,4].forEach(i => {
+      document.getElementById(`step${i}`).classList.toggle('visible', i === n);
+      const tab = document.getElementById(`step${i}-tab`);
+      if (tab) {
+        tab.classList.toggle('active', i === n);
+        tab.classList.toggle('done', i < n);
+      }
+    });
+  }
+
+  function modalityLabel(m) {
+    return { video: 'Videollamada', audio: 'Llamada de voz', whatsapp: 'WhatsApp' }[m] || m;
+  }
+
+  init();
+</script>
+</body>
+</html>
