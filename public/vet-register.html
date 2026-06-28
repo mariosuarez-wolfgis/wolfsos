@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wolf SOS — Registro de Veterinario</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      width: 100%;
+      max-width: 500px;
+      padding: 40px;
+    }
+    h1 { color: #1b4332; margin-bottom: 30px; font-size: 1.5rem; }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    label { font-size: 0.85rem; font-weight: 600; color: #333; }
+    input, select, textarea {
+      padding: 12px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #2d6a4f;
+      box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.1);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .btn {
+      background: #2d6a4f;
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-top: 20px;
+    }
+    .btn:hover { background: #1b4332; }
+    .error { color: #c0392b; font-size: 0.85rem; background: #fdf0ee; padding: 10px; border-radius: 6px; margin-top: 10px; }
+    .success { color: #1b4332; font-size: 0.85rem; background: #f0faf4; padding: 10px; border-radius: 6px; margin-top: 10px; }
+    .loading { text-align: center; color: #666; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>🐾 Registro de Veterinario</h1>
+
+  <div id="step1">
+    <p style="color: #666; margin-bottom: 20px;">Completa tu perfil como veterinario</p>
+    <form id="registerForm" novalidate>
+      <div class="form-group">
+        <label>Especialidad *</label>
+        <select id="specialty" required>
+          <option value="">Seleccionar...</option>
+          <option>Medicina General</option>
+          <option>Cirugía Veterinaria</option>
+          <option>Oftalmología</option>
+          <option>Dermatología</option>
+          <option>Cardiología</option>
+          <option>Medicina Interna</option>
+          <option>Otra</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Número de Licencia *</label>
+        <input type="text" id="licenseNumber" placeholder="Ej. 12345-VET" required>
+      </div>
+
+      <div class="form-group">
+        <label>WhatsApp / Teléfono *</label>
+        <input type="tel" id="whatsapp" placeholder="+58 414 0000000" required>
+      </div>
+
+      <div class="form-group">
+        <label>Ubicación / Zona de atención *</label>
+        <input type="text" id="location" placeholder="Ej. Caracas, Chacao" required>
+      </div>
+
+      <div class="form-group">
+        <label>Biografía breve</label>
+        <textarea id="bio" placeholder="Tu experiencia, especialidades, servicios..."></textarea>
+      </div>
+
+      <button type="submit" class="btn">Completar Registro</button>
+      <div id="registerError" class="error" style="display: none;"></div>
+    </form>
+  </div>
+
+  <div id="step2" style="display: none;">
+    <div class="success">
+      ✅ ¡Bienvenido! Tu cuenta está lista.
+    </div>
+    <p style="color: #666; margin-top: 20px; margin-bottom: 20px;">
+      Ahora puedes acceder a tu panel de veterinario
+    </p>
+    <a href="/admin.html" style="display: block; text-align: center; background: #2d6a4f; color: white; padding: 14px; border-radius: 8px; text-decoration: none; font-weight: 700;">
+      Ir a mi panel
+    </a>
+  </div>
+</div>
+
+<script>
+  const API = location.origin;
+
+  // Obtener token de invitación de URL
+  const params = new URLSearchParams(location.search);
+  const invitationToken = params.get('token');
+
+  if (!invitationToken) {
+    document.getElementById('registerError').textContent = 'Token de invitación inválido o expirado';
+    document.getElementById('registerError').style.display = 'block';
+  }
+
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const specialty = document.getElementById('specialty').value;
+    const licenseNumber = document.getElementById('licenseNumber').value;
+    const whatsapp = document.getElementById('whatsapp').value;
+    const location = document.getElementById('location').value;
+    const bio = document.getElementById('bio').value;
+
+    if (!specialty || !licenseNumber || !whatsapp || !location) {
+      showError('Completa todos los campos obligatorios');
+      return;
+    }
+
+    // Para simplificar: usar Google OAuth en producción
+    // Por ahora, simular con un mensaje
+    showSuccess('Por favor usa Google OAuth para registrarte (implementación en producción)');
+  });
+
+  function showError(msg) {
+    const el = document.getElementById('registerError');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function showSuccess(msg) {
+    document.getElementById('step1').style.display = 'none';
+    document.getElementById('step2').style.display = 'block';
+  }
+</script>
+</body>
+</html>
