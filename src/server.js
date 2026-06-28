@@ -5,7 +5,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('node:path');
 const db = require('./db');
-const auth = require('./auth');
+const googleAuth = require('./google-auth');
 const { generateSlots } = require('./slots');
 const { buildIcs, buildWhatsappLink } = require('./format');
 const { DateTime } = require('luxon');
@@ -29,16 +29,130 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// --- Rutas públicas ---
+// ============================================
+// GOOGLE OAUTH ROUTES
+// ============================================
+
+app.get('/auth/google', (req, res) => {
+  const url = googleAuth.getGoogleAuthUrl();
+  res.json({ authUrl: url });
+});
+
+app.post('/auth/google/callback', async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Code required' });
+
+    const googleUser = await googleAuth.handleGoogleCallback(code);
+
+    // Determinar si es médico, admin, o nuevo registro
+    let userType = req.body.userType; // 'vet', 'admin', o 'register'
+
+    if (userType === 'admin') {
+      const result = await googleAuth.loginAdmin(googleUser);
+      return res.json(result);
+    }
+
+    if (userType === 'register') {
+      // Nuevo registro de médico
+      const vetData = req.body.vetData;
+      const result = await googleAuth.loginOrCreateVet(googleUser, vetData);
+      return res.json(result);
+    }
+
+    // Login normal (vet o admin)
+    const vet = await db.getVet(googleUser.email);
+    if (vet) {
+      await db.updateVetGoogleTokens(vet.id, googleUser.accessToken, googleUser.refreshToken);
+      const result = await googleAuth.loginOrCreateVet(googleUser);
+      return res.json(result);
+    }
+
+    return res.status(404).json({ error: 'Vet not found. Register first.' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ============================================
+// VET REGISTRATION (Primer registro con Google)
+// ============================================
+
+app.post('/api/vets/register', async (req, res) => {
+  try {
+    const { code, specialty, whatsapp, licenseNumber, location, bio } = req.body;
+    if (!code) return res.status(400).json({ error: 'Google code required' });
+
+    const googleUser = await googleAuth.handleGoogleCallback(code);
+
+    // Verificar que no exista
+    const existing = await db.getVet(googleUser.email);
+    if (existing) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    // Crear vet con datos completos
+    const vetData = {
+      specialty,
+      whatsapp,
+      licenseNumber,
+      location,
+      bio,
+    };
+
+    const result = await googleAuth.loginOrCreateVet(googleUser, vetData);
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ============================================
+// VET LOGIN (Google OAuth existente)
+// ============================================
+
+app.post('/api/vets/login', async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Google code required' });
+
+    const googleUser = await googleAuth.handleGoogleCallback(code);
+    const result = await googleAuth.loginOrCreateVet(googleUser);
+    res.json(result);
+  } catch (err) {
+    res.status(401).json({ error: err.message });
+  }
+});
+
+// ============================================
+// ADMIN LOGIN (Google OAuth)
+// ============================================
+
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Google code required' });
+
+    const googleUser = await googleAuth.handleGoogleCallback(code);
+    const result = await googleAuth.loginAdmin(googleUser);
+    res.json(result);
+  } catch (err) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// ============================================
+// PUBLIC: VETS Y HORARIOS
+// ============================================
 
 app.get('/api/vets', async (req, res) => {
   try {
     const vets = await db.listVets();
     res.json(vets.map(v => ({
       id: v.id,
-      email: v.email,
       name: v.name,
       specialty: v.specialty,
+      picture: v.picture,
       modalities: v.modalities ? v.modalities.split(',') : [],
       timezone: v.timezone,
     })));
@@ -49,13 +163,13 @@ app.get('/api/vets', async (req, res) => {
 
 app.get('/api/vets/:id', async (req, res) => {
   try {
-    const vet = await db.getVet(req.params.id);
-    if (!vet) return res.status(404).json({ error: 'Veterinario no encontrado.' });
+    const vet = await db.getVetById(req.params.id);
+    if (!vet) return res.status(404).json({ error: 'Veterinarian not found' });
     res.json({
       id: vet.id,
-      email: vet.email,
       name: vet.name,
       specialty: vet.specialty,
+      picture: vet.picture,
       modalities: vet.modalities ? vet.modalities.split(',') : [],
       timezone: vet.timezone,
     });
@@ -64,59 +178,112 @@ app.get('/api/vets/:id', async (req, res) => {
   }
 });
 
+// SLOTS desde bloques flexibles
 app.get('/api/vets/:id/slots', async (req, res) => {
   try {
-    const vet = await db.getVet(req.params.id);
-    if (!vet) return res.status(404).json({ error: 'Veterinario no encontrado.' });
+    const vet = await db.getVetById(req.params.id);
+    if (!vet) return res.status(404).json({ error: 'Veterinarian not found' });
 
     const days = Math.min(parseInt(req.query.days) || 7, 30);
     const nowMs = Date.now();
     const toMs = nowMs + days * 86_400_000;
 
-    const [rules, timeOff, booked] = await Promise.all([
-      db.getRules(vet.id),
-      db.getTimeOff(vet.id, nowMs, toMs),
-      db.getBookedSlots(vet.id, nowMs, toMs)
-    ]);
+    // Obtener bloques de tiempo del vet
+    const timeBlocks = await db.getVetTimeBlocks(vet.id, nowMs, toMs);
+    const booked = await db.getBookedSlots(vet.id, nowMs, toMs);
 
-    const vetWithDays = { ...vet, horizon_days: days };
-    const slots = generateSlots(vetWithDays, rules, timeOff, booked, nowMs);
-    res.json(slots);
+    // Generar slots desde bloques
+    const slots = [];
+    const tz = vet.timezone || 'America/Caracas';
+    const slotDurationMs = (vet.slot_minutes || 30) * 60 * 1000;
+
+    timeBlocks.forEach(block => {
+      let cursor = block.start_ms;
+      while (cursor + slotDurationMs <= block.end_ms) {
+        const endCursor = cursor + slotDurationMs;
+
+        // Verificar que no esté ocupado
+        const isBooked = booked.some(b => cursor < b.end_ms && endCursor > b.start_ms);
+        if (!isBooked) {
+          const startDt = DateTime.fromMillis(cursor, { zone: tz });
+          slots.push({
+            startMs: cursor,
+            endMs: endCursor,
+            startIso: startDt.toUTC().toISO(),
+            endIso: DateTime.fromMillis(endCursor, { zone: tz }).toUTC().toISO(),
+            localTime: startDt.toFormat("cccc d LLLL, HH:mm", { locale: 'es' }),
+          });
+        }
+
+        cursor = endCursor;
+      }
+    });
+
+    res.json(slots.sort((a, b) => a.startMs - b.startMs));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// ============================================
+// TRIAGE FORM
+// ============================================
+
+app.post('/api/triage', async (req, res) => {
+  try {
+    const triageData = {
+      tutorName: req.body.tutorName,
+      tutorWhatsapp: req.body.tutorWhatsapp,
+      tutorLocation: req.body.tutorLocation,
+      tutorCanVideocall: req.body.tutorCanVideocall,
+      animalName: req.body.animalName,
+      animalSpecies: req.body.animalSpecies,
+      animalAge: req.body.animalAge,
+      animalWeight: req.body.animalWeight,
+      symptoms: req.body.symptoms,
+      criticalSigns: req.body.criticalSigns || [],
+      urgencyLevel: req.body.urgencyLevel,
+      photoUrl: req.body.photoUrl,
+    };
+
+    const triage = await db.createTriageForm(triageData);
+    res.status(201).json(triage);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ============================================
+// BOOKINGS
+// ============================================
+
 app.post('/api/bookings', async (req, res) => {
   try {
-    const { vetId, startIso, modality, tutorName, tutorWhatsapp, animalName, species, urgency, symptoms } = req.body;
+    const { vetId, startIso, modality, tutorName, tutorWhatsapp, animalName, species, urgency, symptoms, triageFormId } = req.body;
 
     if (!vetId || !startIso || !modality || !tutorName || !tutorWhatsapp || !animalName || !species) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios.' });
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
     const vet = await db.getVetById(vetId);
-    if (!vet) return res.status(404).json({ error: 'Veterinario no encontrado.' });
+    if (!vet) return res.status(404).json({ error: 'Veterinarian not found' });
 
     const startMs = new Date(startIso).getTime();
-    if (isNaN(startMs)) return res.status(400).json({ error: 'Fecha inválida.' });
-    const endMs = startMs + vet.slot_minutes * 60_000;
+    if (isNaN(startMs)) return res.status(400).json({ error: 'Invalid date' });
+    const endMs = startMs + vet.slot_minutes * 60 * 1000;
 
     const nowMs = Date.now();
-    const [rules, timeOff, booked] = await Promise.all([
-      db.getRules(vet.id),
-      db.getTimeOff(vet.id, nowMs, endMs + 1),
-      db.getBookedSlots(vet.id, nowMs, endMs + 1)
-    ]);
+    const booked = await db.getBookedSlots(vet.id, nowMs, endMs + 1);
 
-    const slots = generateSlots(vet, rules, timeOff, booked, nowMs);
-    const valid = slots.some(s => s.startMs === startMs);
-    if (!valid) {
-      return res.status(409).json({ error: 'Ese horario no está disponible. Elige otro.' });
+    // Verificar que no esté booked
+    const isBooked = booked.some(b => startMs < b.end_ms && endMs > b.start_ms);
+    if (isBooked) {
+      return res.status(409).json({ error: 'Slot already booked' });
     }
 
+    // Crear cita
     try {
-      const result = await db.insertAppointment({
+      const appointmentData = {
         vetId: vet.id,
         startMs,
         endMs,
@@ -127,10 +294,25 @@ app.post('/api/bookings', async (req, res) => {
         species,
         urgency: urgency || '',
         symptoms: symptoms || '',
+        triageFormId: triageFormId || null,
         createdMs: Date.now(),
-      });
+      };
 
-      const appt = result;
+      const appointment = await db.insertAppointment(appointmentData);
+
+      // Crear evento en Google Calendar del médico
+      let googleEventId = null;
+      let meetLink = null;
+
+      if (vet.google_access_token) {
+        const calResult = await googleAuth.createCalendarEvent(vet.id, appointment, vet);
+        if (calResult.eventId) {
+          googleEventId = calResult.eventId;
+          meetLink = calResult.meetLink;
+          await db.updateAppointmentGoogleData(appointment.id, googleEventId, meetLink);
+        }
+      }
+
       const tz = vet.timezone || 'America/Caracas';
       const whenLocal = DateTime.fromMillis(startMs, { zone: tz }).toFormat(
         "cccc d 'de' LLLL, HH:mm",
@@ -138,17 +320,18 @@ app.post('/api/bookings', async (req, res) => {
       );
 
       res.status(201).json({
-        id: appt.id,
+        id: appointment.id,
         vet: vet.name,
         whenLocal,
         timezone: tz,
-        modality: appt.modality,
-        whatsappLink: buildWhatsappLink(appt, vet),
-        icsUrl: `/api/bookings/${appt.id}/ics`,
+        modality: appointment.modality,
+        meetLink: meetLink,
+        whatsappLink: buildWhatsappLink(appointment, vet),
+        icsUrl: `/api/bookings/${appointment.id}/ics`,
       });
     } catch (err) {
       if (err.code === 'UNIQUE_VIOLATION') {
-        return res.status(409).json({ error: 'Ese horario ya fue reservado. Elige otro.' });
+        return res.status(409).json({ error: 'Slot already booked' });
       }
       throw err;
     }
@@ -159,120 +342,78 @@ app.post('/api/bookings', async (req, res) => {
 
 app.get('/api/bookings/:id/ics', async (req, res) => {
   try {
-    const appt = await db.getAppointment(req.params.id);
-    if (!appt) return res.status(404).json({ error: 'Cita no encontrada.' });
+    const appointment = await db.getAppointment(req.params.id);
+    if (!appointment) return res.status(404).json({ error: 'Appointment not found' });
 
-    const vet = await db.getVetById(appt.vet_id);
-    if (!vet) return res.status(404).json({ error: 'Veterinario no encontrado.' });
+    const vet = await db.getVetById(appointment.vet_id);
+    if (!vet) return res.status(404).json({ error: 'Veterinarian not found' });
 
-    const ics = buildIcs(appt, vet);
+    const ics = buildIcs(appointment, vet);
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="cita-${appt.id}.ics"`);
+    res.setHeader('Content-Disposition', `attachment; filename="cita-${appointment.id}.ics"`);
     res.send(ics);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// --- Rutas de autenticación ---
+// ============================================
+// VET ROUTES (Protegidas con JWT)
+// ============================================
 
-app.post('/api/vets/register', async (req, res) => {
-  try {
-    const { name, email, password, whatsapp, specialty } = req.body;
-    const result = await auth.registerVet(email, password, name, whatsapp, specialty);
-    res.status(201).json(result);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-app.post('/api/vets/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email y contraseña requeridos' });
-    }
-    const result = await auth.loginVet(email, password);
-    res.json(result);
-  } catch (err) {
-    res.status(401).json({ error: err.message });
-  }
-});
-
-// --- Rutas admin (protegidas con JWT) ---
-
-app.get('/api/admin/vets/:vetId/availability', auth.requireAuth, async (req, res) => {
+app.get('/api/admin/vets/:vetId/time-blocks', googleAuth.requireAuth, async (req, res) => {
   try {
     if (req.vetId !== req.params.vetId) {
-      return res.status(403).json({ error: 'No autorizado' });
+      return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    const rules = await db.getRules(req.params.vetId);
-    res.json({
-      rules: rules.map(r => ({
-        weekday: r.weekday,
-        startMin: r.start_min,
-        endMin: r.end_min
-      }))
-    });
+    const blocks = await db.getVetTimeBlocks(req.params.vetId, 0, Date.now() + 90 * 86_400_000);
+    res.json(blocks);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/admin/vets/:vetId/availability', auth.requireAuth, async (req, res) => {
+app.post('/api/admin/vets/:vetId/time-blocks', googleAuth.requireAuth, async (req, res) => {
   try {
     if (req.vetId !== req.params.vetId) {
-      return res.status(403).json({ error: 'No autorizado' });
+      return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    const { rules } = req.body;
-    if (!Array.isArray(rules)) return res.status(400).json({ error: 'rules debe ser un array.' });
+    const { startMs, endMs, durationMinutes } = req.body;
+    if (!startMs || !endMs) return res.status(400).json({ error: 'Start and end times required' });
 
-    for (const r of rules) {
-      if (r.weekday < 1 || r.weekday > 7) return res.status(400).json({ error: 'weekday debe ser 1-7.' });
-      if (r.startMin >= r.endMin) return res.status(400).json({ error: 'startMin debe ser menor que endMin.' });
-    }
-
-    await db.replaceRules(req.params.vetId, rules);
-    res.json({ ok: true, rules });
+    const block = await db.createTimeBlock(req.params.vetId, startMs, endMs, durationMinutes);
+    res.status(201).json(block);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/admin/vets/:vetId/time-off', auth.requireAuth, async (req, res) => {
+app.delete('/api/admin/vets/:vetId/time-blocks/:blockId', googleAuth.requireAuth, async (req, res) => {
   try {
     if (req.vetId !== req.params.vetId) {
-      return res.status(403).json({ error: 'No autorizado' });
+      return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    const { startIso, endIso, reason } = req.body;
-    const startMs = new Date(startIso).getTime();
-    const endMs = new Date(endIso).getTime();
-    if (isNaN(startMs) || isNaN(endMs) || startMs >= endMs) {
-      return res.status(400).json({ error: 'Rango de ausencia inválido.' });
-    }
-
-    await db.addTimeOff(req.params.vetId, startMs, endMs, reason);
-    res.status(201).json({ ok: true });
+    await db.deleteTimeBlock(req.params.blockId);
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/admin/vets/:vetId/appointments', auth.requireAuth, async (req, res) => {
+app.get('/api/admin/vets/:vetId/appointments', googleAuth.requireAuth, async (req, res) => {
   try {
     if (req.vetId !== req.params.vetId) {
-      return res.status(403).json({ error: 'No autorizado' });
+      return res.status(403).json({ error: 'Unauthorized' });
     }
 
     const vet = await db.getVetById(req.params.vetId);
-    if (!vet) return res.status(404).json({ error: 'Veterinario no encontrado.' });
+    if (!vet) return res.status(404).json({ error: 'Veterinarian not found' });
 
-    const fromMs = Date.now();
+    const appointments = await db.listAppointments(req.params.vetId, Date.now());
     const tz = vet.timezone || 'America/Caracas';
-    const appointments = await db.listAppointments(req.params.vetId, fromMs);
 
     res.json(appointments.map(a => ({
       id: a.id,
@@ -282,23 +423,26 @@ app.get('/api/admin/vets/:vetId/appointments', auth.requireAuth, async (req, res
         "cccc d 'de' LLLL, HH:mm",
         { locale: 'es' }
       ),
-      modality: a.modality,
       tutorName: a.tutor_name,
       tutorWhatsapp: a.tutor_whatsapp,
       animalName: a.animal_name,
       species: a.species,
+      modality: a.modality,
       urgency: a.urgency,
       symptoms: a.symptoms,
+      meetLink: a.meet_link,
     })));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// --- Arranque ---
+// ============================================
+// STARTUP
+// ============================================
 
 app.listen(PORT, () => {
-  console.log(`\n🐾 Wolf SOS — Sistema de Agenda Veterinaria`);
+  console.log(`\n🐾 Wolf SOS v2 — Sistema de Agenda Veterinaria`);
   console.log(`   Servidor: http://localhost:${PORT}`);
   console.log(`   Tutor:    http://localhost:${PORT}/agenda.html`);
   console.log(`   Admin:    http://localhost:${PORT}/admin.html`);
