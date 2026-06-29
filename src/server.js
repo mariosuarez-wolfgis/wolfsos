@@ -36,7 +36,27 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/auth/google/url', (req, res) => {
   const url = googleAuth.getGoogleAuthUrl();
+  console.log('🔐 Google Auth URL requested:', url);
   res.json({ authUrl: url });
+});
+
+// DEBUG: Mostrar configuración de Google OAuth
+app.get('/debug/google-config', (req, res) => {
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+  const redirectUri = isProduction
+    ? (process.env.GOOGLE_REDIRECT_URI_PROD || 'https://wolfsos.onrender.com/auth/google/callback')
+    : (process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3003/auth/google/callback');
+
+  res.json({
+    NODE_ENV: process.env.NODE_ENV || 'not set',
+    RENDER: process.env.RENDER || 'not set',
+    isProduction: isProduction,
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? '✓ Configurado' : '❌ No configurado',
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ? '✓ Configurado' : '❌ No configurado',
+    GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI || 'not set',
+    GOOGLE_REDIRECT_URI_PROD: process.env.GOOGLE_REDIRECT_URI_PROD || 'not set',
+    'redirectUri_BEING_USED': redirectUri,
+  });
 });
 
 app.post('/auth/google/callback', async (req, res) => {
