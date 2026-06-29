@@ -21,13 +21,14 @@ async function inviteVet(adminId, email) {
 
   const invitationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3003'}/vet-register.html?token=${invitation.token}`;
 
-  // Enviar email de invitación
-  try {
-    await emailService.sendVetInvitationEmail(email, invitationUrl, invitation.token);
-  } catch (err) {
-    console.error('Error sending invitation email:', err.message);
-    // No fallar la invitación si hay error de email
-  }
+  // Enviar email de invitación EN BACKGROUND (no esperar)
+  setImmediate(async () => {
+    try {
+      await emailService.sendVetInvitationEmail(email, invitationUrl, invitation.token);
+    } catch (err) {
+      console.error('❌ Error sending invitation email to', email, ':', err.message);
+    }
+  });
 
   return {
     invitationId: invitation.id,

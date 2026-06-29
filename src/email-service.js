@@ -13,6 +13,24 @@ const transporter = nodemailer.createTransport({
 
 // Enviar email de invitación a veterinario
 async function sendVetInvitationEmail(vetEmail, invitationUrl, invitationToken) {
+  // Si Gmail no está configurado, solo mostrar en logs
+  if (!process.env.GMAIL_USER || process.env.GMAIL_USER === 'tu-gmail@gmail.com') {
+    console.log(`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📧 INVITACIÓN GENERADA (EMAIL NO CONFIGURADO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Email: ${vetEmail}
+Enlace de invitación: ${invitationUrl}
+Token: ${invitationToken}
+
+⚠️  Para enviar automáticamente, configura:
+   GMAIL_USER=tu-email@gmail.com
+   GMAIL_PASSWORD=tu-app-password
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    `);
+    return { message: 'Invitation link created (email not configured)' };
+  }
+
   try {
     const mailOptions = {
       from: `"Wolf SOS" <${process.env.GMAIL_USER}>`,
