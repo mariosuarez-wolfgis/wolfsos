@@ -103,7 +103,7 @@
         <textarea id="bio" placeholder="Tu experiencia, especialidades, servicios..."></textarea>
       </div>
 
-      <button type="submit" class="btn">Completar Registro</button>
+      <button type="submit" class="btn">Registrarme con Google</button>
       <div id="registerError" class="error" style="display: none;"></div>
     </form>
   </div>
@@ -121,7 +121,25 @@
   </div>
 </div>
 
-<script>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+  import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyDQnbfxK0iLZENKGx3p7mPIH8BYXqI6Cdc",
+    authDomain: "wolfsos.firebaseapp.com",
+    projectId: "wolfsos",
+    storageBucket: "wolfsos.appspot.com",
+    messagingSenderId: "665011660856",
+    appId: "1:665011660856:web:f0e6f4e1234567890abcdef"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
   const API = location.origin;
 
   // Obtener token de invitación de URL
@@ -133,103 +151,73 @@
     document.getElementById('registerError').style.display = 'block';
   }
 
-  // Google Sign-In para registro
-  async function initGoogleAuthRegister() {
-    try {
-      const response = await fetch(`${API}/auth/google/url`);
-      const data = await response.json();
-      // Agregar parámetro de invitación si existe
-      const authUrl = new URL(data.authUrl);
-      authUrl.searchParams.append('state', invitationToken || '');
-      window.googleAuthUrl = authUrl.toString();
-    } catch (err) {
-      console.error('Error initializing Google Auth:', err);
-      showError('Error al inicializar autenticación');
+  // Manejar submit del formulario
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const specialty = document.getElementById('specialty').value;
+    const licenseNumber = document.getElementById('licenseNumber').value;
+    const whatsapp = document.getElementById('whatsapp').value;
+    const location = document.getElementById('location').value;
+    const bio = document.getElementById('bio').value;
+
+    if (!specialty || !licenseNumber || !whatsapp || !location) {
+      document.getElementById('registerError').textContent = 'Completa todos los campos obligatorios';
+      document.getElementById('registerError').style.display = 'block';
+      return;
     }
-  }
 
-  // Si viene del callback de Google
-  const code = params.get('code');
+    try {
+      // Guardar datos en sessionStorage para el callback
+      sessionStorage.setItem('vetSpecialty', specialty);
+      sessionStorage.setItem('vetLicense', licenseNumber);
+      sessionStorage.setItem('vetWhatsapp', whatsapp);
+      sessionStorage.setItem('vetLocation', location);
+      sessionStorage.setItem('vetBio', bio);
+      sessionStorage.setItem('invitationToken', invitationToken);
 
-  if (code) {
-    // Google devolvió código, intercambiar por token y registrar
-    (async () => {
-      const specialty = localStorage.getItem('registerSpecialty') || '';
-      const licenseNumber = localStorage.getItem('registerLicense') || '';
-      const whatsapp = localStorage.getItem('registerWhatsapp') || '';
-      const location_val = localStorage.getItem('registerLocation') || '';
-      const bio = localStorage.getItem('registerBio') || '';
+      // Iniciar Google Sign-In
+      const result = await signInWithPopup(auth, provider);
+      const idToken = await result.user.getIdToken();
 
-      try {
-        const res = await fetch(`${API}/api/vets/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            code,
-            specialty,
-            licenseNumber,
-            whatsapp,
-            location: location_val,
-            bio,
-            invitationToken
-          })
-        });
-        const data = await res.json();
-        if (data.token) {
-          localStorage.setItem('vetToken', data.token);
-          localStorage.removeItem('registerSpecialty');
-          localStorage.removeItem('registerLicense');
-          localStorage.removeItem('registerWhatsapp');
-          localStorage.removeItem('registerLocation');
-          localStorage.removeItem('registerBio');
-          showSuccess('Registro completado exitosamente');
-        } else {
-          throw new Error(data.error || 'Registration failed');
-        }
-      } catch (err) {
-        showError(err.message);
+      // Recuperar datos guardados
+      const savedSpecialty = sessionStorage.getItem('vetSpecialty');
+      const savedLicense = sessionStorage.getItem('vetLicense');
+      const savedWhatsapp = sessionStorage.getItem('vetWhatsapp');
+      const savedLocation = sessionStorage.getItem('vetLocation');
+      const savedBio = sessionStorage.getItem('vetBio');
+      const savedToken = sessionStorage.getItem('invitationToken');
+
+      // Enviar al backend
+      const res = await fetch(`${API}/api/vets/register-firebase`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken,
+          invitationToken: savedToken,
+          specialty: savedSpecialty,
+          licenseNumber: savedLicense,
+          whatsapp: savedWhatsapp,
+          location: savedLocation,
+          bio: savedBio,
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.token) {
+        localStorage.setItem('vetToken', data.token);
+        sessionStorage.clear();
+        document.getElementById('step1').style.display = 'none';
+        document.getElementById('step2').style.display = 'block';
+      } else {
+        throw new Error(data.error || 'Registration failed');
       }
-    })();
-  } else {
-    // Inicializar
-    initGoogleAuthRegister();
-
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const specialty = document.getElementById('specialty').value;
-      const licenseNumber = document.getElementById('licenseNumber').value;
-      const whatsapp = document.getElementById('whatsapp').value;
-      const location_val = document.getElementById('location').value;
-      const bio = document.getElementById('bio').value;
-
-      if (!specialty || !licenseNumber || !whatsapp || !location_val) {
-        showError('Completa todos los campos obligatorios');
-        return;
-      }
-
-      // Guardar datos en localStorage y redirigir a Google OAuth
-      localStorage.setItem('registerSpecialty', specialty);
-      localStorage.setItem('registerLicense', licenseNumber);
-      localStorage.setItem('registerWhatsapp', whatsapp);
-      localStorage.setItem('registerLocation', location_val);
-      localStorage.setItem('registerBio', bio);
-
-      // Redirigir a Google OAuth
-      location.href = window.googleAuthUrl;
-    });
-  }
-
-  function showError(msg) {
-    const el = document.getElementById('registerError');
-    el.textContent = msg;
-    el.style.display = 'block';
-  }
-
-  function showSuccess(msg) {
-    document.getElementById('step1').style.display = 'none';
-    document.getElementById('step2').style.display = 'block';
-  }
+    } catch (err) {
+      document.getElementById('registerError').textContent = `Error: ${err.message}`;
+      document.getElementById('registerError').style.display = 'block';
+    }
+  });
 </script>
 </body>
 </html>

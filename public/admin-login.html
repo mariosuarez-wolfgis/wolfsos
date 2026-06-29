@@ -62,7 +62,6 @@
     <button class="btn btn-google" id="googleLoginBtn">
       🔐 Ingresar con Google
     </button>
-    <div id="loginError" class="error" style="display: none;"></div>
 
     <div style="border-top: 1px solid #ddd; margin: 20px 0; padding: 20px 0;">
       <p style="color: #666; font-size: 0.85rem; margin-bottom: 15px;">
@@ -72,19 +71,37 @@
         <input type="password" id="adminPassword" placeholder="Contraseña admin" style="flex: 1; padding: 10px; border: 1.5px solid #ddd; border-radius: 6px;">
         <button id="passwordLoginBtn" style="background: #2d6a4f; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">Entrar</button>
       </div>
-      <div id="passwordError" class="error" style="display: none;"></div>
     </div>
+
+    <div id="loginError" class="error" style="display: none;"></div>
   </div>
 
   <div id="loadingScreen" style="display: none; padding: 40px 0;">
     <div class="loading">
-      <p>Redirigiendo a Google...</p>
+      <p>⏳ Autenticando...</p>
     </div>
   </div>
 </div>
 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+  import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyDQnbfxK0iLZENKGx3p7mPIH8BYXqI6Cdc",
+    authDomain: "wolfsos.firebaseapp.com",
+    projectId: "wolfsos",
+    storageBucket: "wolfsos.appspot.com",
+    messagingSenderId: "665011660856",
+    appId: "1:665011660856:web:f0e6f4e1234567890abcdef"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
   const API = location.origin;
 
   // Verificar si ya hay token guardado
@@ -93,91 +110,69 @@
     location.href = '/admin-panel.html';
   }
 
-  // Google Sign-In con OAuth real
-  async function initGoogleAuth() {
+  // Google Sign-In
+  document.getElementById('googleLoginBtn').addEventListener('click', async () => {
     try {
-      const response = await fetch(`${API}/auth/google/url`);
-      const data = await response.json();
-      window.googleAuthUrl = data.authUrl;
-    } catch (err) {
-      console.error('Error initializing Google Auth:', err);
-    }
-  }
-
-  // Si viene del callback de Google
-  const params = new URLSearchParams(location.search);
-  const code = params.get('code');
-
-  if (code) {
-    // Google devolvió un código, intercambiarlo por token
-    (async () => {
-      document.getElementById('loadingScreen').style.display = 'block';
       document.getElementById('loginForm').style.display = 'none';
-      try {
-        const res = await fetch(`${API}/api/admin/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code })
-        });
-        const data = await res.json();
-        if (data.token) {
-          localStorage.setItem('adminToken', data.token);
-          location.href = '/admin-panel.html';
-        } else {
-          throw new Error(data.error || 'Login failed');
-        }
-      } catch (err) {
-        document.getElementById('loginForm').style.display = 'block';
-        document.getElementById('loadingScreen').style.display = 'none';
-        document.getElementById('loginError').textContent = err.message;
-        document.getElementById('loginError').style.display = 'block';
-      }
-    })();
-  } else {
-    // Inicializar botón de Google
-    initGoogleAuth();
-    document.getElementById('googleLoginBtn').addEventListener('click', (e) => {
-      e.preventDefault();
-      if (window.googleAuthUrl) {
-        location.href = window.googleAuthUrl;
+      document.getElementById('loadingScreen').style.display = 'block';
+
+      const result = await signInWithPopup(auth, provider);
+      const idToken = await result.user.getIdToken();
+
+      // Enviar idToken al backend
+      const res = await fetch(`${API}/api/admin/login-firebase`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
+      });
+
+      const data = await res.json();
+
+      if (data.token) {
+        localStorage.setItem('adminToken', data.token);
+        location.href = '/admin-panel.html';
       } else {
-        document.getElementById('loginError').textContent = 'Error: No se pudo obtener URL de Google';
-        document.getElementById('loginError').style.display = 'block';
+        throw new Error(data.error || 'Login failed');
       }
-    });
+    } catch (err) {
+      document.getElementById('loginForm').style.display = 'block';
+      document.getElementById('loadingScreen').style.display = 'none';
+      document.getElementById('loginError').textContent = `Error: ${err.message}`;
+      document.getElementById('loginError').style.display = 'block';
+    }
+  });
 
-    // Login por contraseña
-    document.getElementById('passwordLoginBtn').addEventListener('click', async () => {
-      const password = document.getElementById('adminPassword').value;
-      const errEl = document.getElementById('passwordError');
-      errEl.style.display = 'none';
+  // Login por contraseña
+  document.getElementById('passwordLoginBtn').addEventListener('click', async () => {
+    const password = document.getElementById('adminPassword').value;
+    const errEl = document.getElementById('loginError');
+    errEl.style.display = 'none';
 
-      if (!password) {
-        errEl.textContent = 'Ingresa la contraseña';
-        errEl.style.display = 'block';
-        return;
+    if (!password) {
+      errEl.textContent = 'Ingresa la contraseña';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API}/api/admin/login-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+
+      if (data.token) {
+        localStorage.setItem('adminToken', data.token);
+        location.href = '/admin-panel.html';
+      } else if (data.error) {
+        throw new Error(data.error);
       }
-
-      try {
-        const res = await fetch(`${API}/api/admin/login-password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password })
-        });
-        const data = await res.json();
-
-        if (data.token) {
-          localStorage.setItem('adminToken', data.token);
-          location.href = '/admin-panel.html';
-        } else if (data.error) {
-          throw new Error(data.error);
-        }
-      } catch (err) {
-        errEl.textContent = `Error: ${err.message}`;
-        errEl.style.display = 'block';
-      }
-    });
-  }
+    } catch (err) {
+      errEl.textContent = `Error: ${err.message}`;
+      errEl.style.display = 'block';
+    }
+  });
 </script>
 </body>
 </html>
