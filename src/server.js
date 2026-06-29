@@ -631,7 +631,11 @@ app.get('/api/vets/:id/slots', async (req, res) => {
     const slotDurationMs = (vet.slot_minutes || 30) * 60 * 1000;
 
     timeBlocks.forEach(block => {
-      let cursor = block.start_ms;
+      // Solo usar bloques que comiencen en el futuro
+      const blockStart = Math.max(block.start_ms, nowMs);
+      if (blockStart >= block.end_ms) return; // El bloque ya pasó completamente
+
+      let cursor = blockStart;
       while (cursor + slotDurationMs <= block.end_ms) {
         const endCursor = cursor + slotDurationMs;
 

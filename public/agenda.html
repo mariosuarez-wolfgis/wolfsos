@@ -333,14 +333,19 @@
 
   function renderSlots(slots) {
     const grid = document.getElementById('slots-grid');
-    if (!slots.length) {
+    const now = Date.now();
+
+    // Filtrar slots que no hayan pasado
+    const futureSlots = slots.filter(s => s.startMs > now);
+
+    if (!futureSlots.length) {
       grid.innerHTML = '<div class="empty">No hay horarios disponibles en los próximos 7 días.</div>';
       return;
     }
 
     // Agrupar por día
     const byDay = {};
-    slots.forEach(s => {
+    futureSlots.forEach(s => {
       const day = s.localTime.split(',')[0];
       if (!byDay[day]) byDay[day] = [];
       byDay[day].push(s);
