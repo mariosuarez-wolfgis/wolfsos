@@ -1,20 +1,13 @@
 'use strict';
 
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-// Configurar transportador de Gmail
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER || 'noreply@wolfsos.com',
-    pass: process.env.GMAIL_PASSWORD || '',
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Enviar email de invitación a veterinario
 async function sendVetInvitationEmail(vetEmail, invitationUrl, invitationToken) {
-  // Si Gmail no está configurado, solo mostrar en logs
-  if (!process.env.GMAIL_USER || process.env.GMAIL_USER === 'tu-gmail@gmail.com') {
+  // Si Resend no está configurado, solo mostrar en logs
+  if (!process.env.RESEND_API_KEY) {
     console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📧 INVITACIÓN GENERADA (EMAIL NO CONFIGURADO)
@@ -24,16 +17,15 @@ Enlace de invitación: ${invitationUrl}
 Token: ${invitationToken}
 
 ⚠️  Para enviar automáticamente, configura:
-   GMAIL_USER=tu-email@gmail.com
-   GMAIL_PASSWORD=tu-app-password
+   RESEND_API_KEY=tu-api-key-resend
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     `);
     return { message: 'Invitation link created (email not configured)' };
   }
 
   try {
-    const mailOptions = {
-      from: `"Wolf SOS" <${process.env.GMAIL_USER}>`,
+    const result = await resend.emails.send({
+      from: 'Wolf SOS <noreply@wolfsos.resend.dev>',
       to: vetEmail,
       subject: '🐾 Invitación a Wolf SOS - Plataforma de Consultas Veterinarias',
       html: `
@@ -43,7 +35,7 @@ Token: ${invitationToken}
           <p>Ha sido invitado a unirse a nuestra plataforma de consultas veterinarias en línea.</p>
 
           <p><strong>Tu código de invitación:</strong></p>
-          <code style="display: block; background: #f5f5f0; padding: 15px; border-radius: 8px; margin: 20px 0; font-weight: bold;">
+          <code style="display: block; background: #f5f5f0; padding: 15px; border-radius: 8px; margin: 20px 0; font-weight: bold; word-break: break-all;">
             ${invitationToken}
           </code>
 
@@ -54,7 +46,7 @@ Token: ${invitationToken}
 
           <p style="color: #666; font-size: 0.9rem; margin-top: 30px;">
             O copia este enlace en tu navegador:<br>
-            <code>${invitationUrl}</code>
+            <code style="word-break: break-all;">${invitationUrl}</code>
           </p>
 
           <p style="color: #999; font-size: 0.85rem; margin-top: 40px;">
@@ -63,21 +55,13 @@ Token: ${invitationToken}
           </p>
         </div>
       `,
-      text: `
-Bienvenido a Wolf SOS
+    });
 
-Has sido invitado a unirse a nuestra plataforma de consultas veterinarias.
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
 
-Tu código de invitación: ${invitationToken}
-
-Completa tu registro aquí: ${invitationUrl}
-
-Este enlace expira en 7 días.
-      `
-    };
-
-    const result = await transporter.sendMail(mailOptions);
-    console.log(`✉️  Email enviado a ${vetEmail}:`, result.messageId);
+    console.log(`✉️  Email enviado a ${vetEmail} (ID: ${result.data.id})`);
     return result;
   } catch (err) {
     console.error(`❌ Error enviando email a ${vetEmail}:`, err.message);
@@ -87,9 +71,14 @@ Este enlace expira en 7 días.
 
 // Enviar confirmación de cita
 async function sendAppointmentConfirmation(tutorEmail, tutorWhatsapp, vetName, appointmentTime) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`📧 Confirmación de cita para ${tutorEmail} (email no configurado)`);
+    return;
+  }
+
   try {
-    const mailOptions = {
-      from: `"Wolf SOS" <${process.env.GMAIL_USER}>`,
+    const result = await resend.emails.send({
+      from: 'Wolf SOS <noreply@wolfsos.resend.dev>',
       to: tutorEmail,
       subject: '📅 Confirmación de Cita - Wolf SOS',
       html: `
@@ -110,10 +99,13 @@ async function sendAppointmentConfirmation(tutorEmail, tutorWhatsapp, vetName, a
             Wolf SOS - Plataforma de Consultas Veterinarias
           </p>
         </div>
-      `
-    };
+      `,
+    });
 
-    const result = await transporter.sendMail(mailOptions);
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
     console.log(`✉️  Confirmación enviada a ${tutorEmail}`);
     return result;
   } catch (err) {
