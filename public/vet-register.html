@@ -20,7 +20,7 @@
       border-radius: 16px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       width: 100%;
-      max-width: 500px;
+      max-width: 400px;
       padding: 40px;
     }
     h1 { color: #1b4332; margin-bottom: 30px; font-size: 1.5rem; }
@@ -31,19 +31,18 @@
       margin-bottom: 20px;
     }
     label { font-size: 0.85rem; font-weight: 600; color: #333; }
-    input, select, textarea {
+    input {
       padding: 12px;
       border: 1.5px solid #ddd;
       border-radius: 8px;
       font-size: 0.95rem;
       font-family: inherit;
     }
-    input:focus, select:focus, textarea:focus {
+    input:focus {
       outline: none;
       border-color: #2d6a4f;
       box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.1);
     }
-    textarea { resize: vertical; min-height: 80px; }
     .btn {
       background: #2d6a4f;
       color: white;
@@ -59,57 +58,22 @@
     .btn:hover { background: #1b4332; }
     .error { color: #c0392b; font-size: 0.85rem; background: #fdf0ee; padding: 10px; border-radius: 6px; margin-top: 10px; }
     .success { color: #1b4332; font-size: 0.85rem; background: #f0faf4; padding: 10px; border-radius: 6px; margin-top: 10px; }
+    .info { color: #666; font-size: 0.9rem; background: #f5f5f0; padding: 12px; border-radius: 6px; margin-bottom: 20px; }
   </style>
 </head>
 <body>
 <div class="card">
-  <h1>🐾 Registro de Veterinario</h1>
+  <h1>🐾 Completar Registro</h1>
 
   <div id="step1">
-    <p style="color: #666; margin-bottom: 20px;">Completa tu perfil como veterinario</p>
+    <div class="info">
+      ✓ Tu perfil ya fue llenado por el administrador. Solo falta tu contraseña.
+    </div>
+
     <form id="registerForm" novalidate>
       <div class="form-group">
-        <label>Email *</label>
-        <input type="email" id="email" placeholder="doctor@example.com" required>
-      </div>
-
-      <div class="form-group">
         <label>Contraseña *</label>
-        <input type="password" id="password" placeholder="Mínimo 6 caracteres" required>
-      </div>
-
-      <div class="form-group">
-        <label>Especialidad *</label>
-        <select id="specialty" required>
-          <option value="">Seleccionar...</option>
-          <option>Medicina General</option>
-          <option>Cirugía Veterinaria</option>
-          <option>Oftalmología</option>
-          <option>Dermatología</option>
-          <option>Cardiología</option>
-          <option>Medicina Interna</option>
-          <option>Otra</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label>Número de Licencia *</label>
-        <input type="text" id="licenseNumber" placeholder="Ej. 12345-VET" required>
-      </div>
-
-      <div class="form-group">
-        <label>WhatsApp / Teléfono *</label>
-        <input type="tel" id="whatsapp" placeholder="+58 414 0000000" required>
-      </div>
-
-      <div class="form-group">
-        <label>Ubicación / Zona de atención *</label>
-        <input type="text" id="location" placeholder="Ej. Caracas, Chacao" required>
-      </div>
-
-      <div class="form-group">
-        <label>Biografía breve</label>
-        <textarea id="bio" placeholder="Tu experiencia, especialidades, servicios..."></textarea>
+        <input type="password" id="password" placeholder="Mínimo 6 caracteres" autocomplete="current-password" required>
       </div>
 
       <button type="submit" class="btn">Completar Registro</button>
@@ -146,19 +110,12 @@
   document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
-    const specialty = document.getElementById('specialty').value;
-    const licenseNumber = document.getElementById('licenseNumber').value.trim();
-    const whatsapp = document.getElementById('whatsapp').value.trim();
-    const location = document.getElementById('location').value.trim();
-    const bio = document.getElementById('bio').value.trim();
-
     const errEl = document.getElementById('registerError');
     errEl.style.display = 'none';
 
-    if (!email || !password || !specialty || !licenseNumber || !whatsapp || !location) {
-      errEl.textContent = 'Completa todos los campos obligatorios';
+    if (!password) {
+      errEl.textContent = 'Por favor ingresa una contraseña';
       errEl.style.display = 'block';
       return;
     }
@@ -170,18 +127,12 @@
     }
 
     try {
-      const res = await fetch(`${API}/api/vets/register`, {
+      const res = await fetch(`${API}/api/vets/register-simple`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,
           password,
           invitationToken,
-          specialty,
-          licenseNumber,
-          whatsapp,
-          location,
-          bio,
         })
       });
 
@@ -192,7 +143,7 @@
         document.getElementById('step1').style.display = 'none';
         document.getElementById('step2').style.display = 'block';
       } else {
-        throw new Error(data.error || 'Registration failed');
+        throw new Error(data.error || 'Registro fallido');
       }
     } catch (err) {
       errEl.textContent = `Error: ${err.message}`;

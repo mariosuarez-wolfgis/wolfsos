@@ -81,11 +81,11 @@ async function createVetWithPassword(email, passwordHash, specialty, licenseNumb
       password_hash: passwordHash,
       name: email.split('@')[0], // Usar email como nombre temporal
       picture: null,
-      specialty,
-      whatsapp,
-      license_number: licenseNumber,
-      location,
-      bio,
+      specialty: specialty || null,
+      whatsapp: whatsapp || null,
+      license_number: licenseNumber || null,
+      location: location || null,
+      bio: bio || null,
       active: true,
     }])
     .select()

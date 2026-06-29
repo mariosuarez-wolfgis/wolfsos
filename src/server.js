@@ -147,7 +147,71 @@ app.post('/api/vets/login', async (req, res) => {
 });
 
 // ============================================
-// VET REGISTER (Email/Password)
+// VET REGISTER (Simple - Solo contraseña)
+// ============================================
+
+app.post('/api/vets/register-simple', async (req, res) => {
+  try {
+    const { password, invitationToken } = req.body;
+
+    if (!password) return res.status(400).json({ error: 'Password required' });
+    if (!invitationToken) return res.status(400).json({ error: 'Invitation token required' });
+
+    // Validar invitación
+    const invitation = await adminService.validateInvitationToken(invitationToken);
+    if (!invitation) {
+      return res.status(403).json({ error: 'Invalid invitation token' });
+    }
+
+    const email = invitation.email;
+
+    // Verificar que no exista vet
+    const existing = await db.getVet(email);
+    if (existing) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    // Hashear contraseña
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Crear vet con los datos de la invitación
+    const vet = await db.createVetWithPassword(
+      email,
+      hashedPassword,
+      invitation.specialty || null,
+      invitation.license_number || null,
+      invitation.whatsapp || null,
+      invitation.location || null,
+      null // bio
+    );
+
+    // Marcar invitación como usada
+    await adminService.useInvitation(invitationToken, vet.id);
+
+    // Generar JWT para sesión
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+    const vetToken = jwt.sign(
+      { vetId: vet.id, email: vet.email },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      token: vetToken,
+      vet: {
+        id: vet.id,
+        email: vet.email,
+      }
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ============================================
+// VET REGISTER (Email/Password - Completo)
 // ============================================
 
 app.post('/api/vets/register', async (req, res) => {
