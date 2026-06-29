@@ -6,6 +6,7 @@ const express = require('express');
 const path = require('node:path');
 const db = require('./db');
 const googleAuth = require('./google-auth');
+const { verifyFirebaseToken } = require('./firebase-auth');
 const adminService = require('./admin-service');
 const { generateSlots } = require('./slots');
 const { buildIcs, buildWhatsappLink } = require('./format');
@@ -146,6 +147,77 @@ app.post('/api/vets/login', async (req, res) => {
 });
 
 // ============================================
+// VET REGISTER (Firebase)
+// ============================================
+
+app.post('/api/vets/register-firebase', async (req, res) => {
+  try {
+    const { idToken, invitationToken, specialty, licenseNumber, whatsapp, location, bio } = req.body;
+    if (!idToken) return res.status(400).json({ error: 'Firebase idToken required' });
+    if (!invitationToken) return res.status(400).json({ error: 'Invitation token required' });
+    if (!specialty) return res.status(400).json({ error: 'Specialty required' });
+    if (!licenseNumber) return res.status(400).json({ error: 'License number required' });
+    if (!whatsapp) return res.status(400).json({ error: 'WhatsApp required' });
+
+    // Validar token de Firebase
+    const firebaseUser = await verifyFirebaseToken(idToken);
+
+    // Validar invitación
+    const invitation = await adminService.validateInvitationToken(invitationToken);
+    if (invitation.email !== firebaseUser.email) {
+      return res.status(403).json({ error: 'Email does not match invitation' });
+    }
+
+    // Verificar que no exista vet
+    const existing = await db.getVet(firebaseUser.email);
+    if (existing) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    // Crear vet con datos completos
+    const vetData = {
+      specialty,
+      whatsapp,
+      licenseNumber,
+      location: location || null,
+      bio: bio || null,
+    };
+
+    const vet = await db.createVetWithGoogle(
+      firebaseUser.email,
+      firebaseUser.name,
+      firebaseUser.picture,
+      null, // accessToken - no usamos directamente con Firebase
+      null, // refreshToken
+      vetData
+    );
+
+    // Marcar invitación como usada
+    await adminService.useInvitation(invitationToken, vet.id);
+
+    // Generar JWT para sesión
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+    const vetToken = jwt.sign(
+      { vetId: vet.id, email: vet.email },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      token: vetToken,
+      vet: {
+        id: vet.id,
+        email: vet.email,
+        name: vet.name,
+      }
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ============================================
 // ADMIN SETUP (Primer acceso - contraseña)
 // ============================================
 
@@ -206,6 +278,51 @@ app.post('/api/admin/login', async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(403).json({ error: err.message });
+  }
+});
+
+// ============================================
+// ADMIN LOGIN (Firebase)
+// ============================================
+
+app.post('/api/admin/login-firebase', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) return res.status(400).json({ error: 'Firebase idToken required' });
+
+    const firebaseUser = await verifyFirebaseToken(idToken);
+
+    // Verificar que sea admin (email debe ser patitas@wolfsos.com)
+    const adminEmail = process.env.ADMIN_EMAIL || 'patitas@wolfsos.com';
+    if (firebaseUser.email !== adminEmail) {
+      return res.status(403).json({ error: 'Only admins can login here' });
+    }
+
+    // Obtener o crear admin en BD
+    let admin = await db.getAdmin(firebaseUser.email);
+    if (!admin) {
+      admin = await db.createAdmin(firebaseUser.email, firebaseUser.name, firebaseUser.picture);
+    }
+
+    // Generar JWT para usar en el panel
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+    const adminToken = jwt.sign(
+      { adminId: admin.id, email: admin.email, role: 'admin' },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token: adminToken,
+      admin: {
+        id: admin.id,
+        email: admin.email,
+        name: admin.name,
+      }
+    });
+  } catch (err) {
+    res.status(401).json({ error: err.message });
   }
 });
 
