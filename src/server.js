@@ -871,6 +871,47 @@ app.get('/api/admin/vets/:vetId/appointments', googleAuth.requireAuth, async (re
 });
 
 // ============================================
+// VET AVAILABILITY (Protegidas - Vet puede ver/editar su disponibilidad)
+// ============================================
+
+app.get('/api/admin/vets/:vetId/availability', googleAuth.requireAuth, async (req, res) => {
+  try {
+    const { vetId } = req.params;
+
+    // Verificar que sea el mismo vet o admin
+    if (req.vetId && req.vetId !== vetId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const rules = await db.getRules(vetId);
+    res.json({ rules });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/vets/:vetId/availability', googleAuth.requireAuth, async (req, res) => {
+  try {
+    const { vetId } = req.params;
+    const { rules } = req.body;
+
+    // Verificar que sea el mismo vet o admin
+    if (req.vetId && req.vetId !== vetId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    if (!rules || !Array.isArray(rules)) {
+      return res.status(400).json({ error: 'Rules array required' });
+    }
+
+    await db.replaceRules(vetId, rules);
+    res.json({ success: true, rules });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // ADMIN ROUTES (Protegidas)
 // ============================================
 
