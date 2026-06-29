@@ -230,7 +230,7 @@
     if (!email || !password) { showErr('login-error', 'Completa ambos campos.'); return; }
 
     try {
-      const res = await fetch(`${API}/api/vets/login`, {
+      const res = await fetch(`${API}/api/vets/login-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })

@@ -130,6 +130,52 @@ app.post('/api/vets/register', async (req, res) => {
 });
 
 // ============================================
+// VET LOGIN (Email/Password)
+// ============================================
+
+app.post('/api/vets/login-password', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    if (!password) return res.status(400).json({ error: 'Password required' });
+
+    // Obtener vet
+    const vet = await db.getVet(email);
+    if (!vet || !vet.password_hash) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Validar contraseña
+    const bcrypt = require('bcryptjs');
+    const validPassword = await bcrypt.compare(password, vet.password_hash);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Generar JWT
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+    const vetToken = jwt.sign(
+      { vetId: vet.id, email: vet.email },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token: vetToken,
+      vet: {
+        id: vet.id,
+        email: vet.email,
+        name: vet.name,
+      }
+    });
+  } catch (err) {
+    console.error('❌ Login error:', err.message);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ============================================
 // VET LOGIN (Google OAuth existente)
 // ============================================
 
