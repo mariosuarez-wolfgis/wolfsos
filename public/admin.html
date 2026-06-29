@@ -169,12 +169,28 @@
     </nav>
 
     <div class="panel visible" id="tab-schedule">
-      <h2>Mi horario semanal</h2>
-      <p style="font-size:.8rem;color:#666;margin-bottom:16px">Hasta 2 rangos por día (en hora Venezuela). Deja vacío para marcar día libre.</p>
+      <h2>Mis bloques de disponibilidad</h2>
+      <p style="font-size:.8rem;color:#666;margin-bottom:16px">Agrega los horarios en los que puedes atender citas. Puedes agregar múltiples bloques.</p>
       <div id="sched-error" class="error-msg" style="display:none"></div>
       <div id="sched-success" class="success-msg" style="display:none"></div>
-      <div class="schedule-grid" id="schedule-grid"></div>
-      <button class="btn btn-primary" id="btn-save-sched">Guardar horario</button>
+
+      <div style="border: 1px solid #ddd; padding: 16px; border-radius: 8px; margin-bottom: 20px; background: #fafaf8;">
+        <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #333;">➕ Agregar bloque de disponibilidad</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <label style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: .8rem; font-weight: 600; color: #444;">Fecha y Hora Inicio</span>
+            <input type="datetime-local" id="block-start" style="padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: .9rem;">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: .8rem; font-weight: 600; color: #444;">Hora Fin</span>
+            <input type="time" id="block-end" style="padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: .9rem;">
+          </label>
+        </div>
+        <button class="btn btn-primary" id="btn-add-block" style="width: 100%;">Agregar bloque</button>
+      </div>
+
+      <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #333;">📅 Bloques actuales</h3>
+      <div id="blocks-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
     </div>
 
     <div class="panel" id="tab-timeoff">
@@ -247,8 +263,7 @@
       document.getElementById('header-name').textContent = vetName;
       hideErr('login-error');
 
-      buildScheduleGrid();
-      await loadSchedule();
+      await loadTimeBlocks();
     } catch (e) {
       showErr('login-error', e.message);
     }
@@ -283,90 +298,114 @@
     });
   });
 
-  // --- HORARIO ---
-  function buildScheduleGrid() {
-    const grid = document.getElementById('schedule-grid');
-    grid.innerHTML = '';
-    for (let d = 1; d <= 7; d++) {
-      const row = document.createElement('div');
-      row.className = 'day-row';
-      row.innerHTML = `
-        <div class="day-name">${DAYS[d]}</div>
-        <div class="range-row">
-          <div class="time-pair">
-            <input type="time" id="d${d}r1s" placeholder="09:00">
-            <span>–</span>
-            <input type="time" id="d${d}r1e" placeholder="12:00">
-          </div>
-          <div class="time-pair">
-            <input type="time" id="d${d}r2s" placeholder="15:00">
-            <span>–</span>
-            <input type="time" id="d${d}r2e" placeholder="18:00">
-          </div>
-        </div>
-      `;
-      grid.appendChild(row);
-    }
-  }
+  // --- HORARIO (Bloques Flexibles) ---
 
-  async function loadSchedule() {
+  // Cargar bloques de tiempo
+  async function loadTimeBlocks() {
     try {
-      const res = await fetch(`${API}/api/admin/vets/${vetId}/availability`, {
+      hideErr('sched-error');
+      const res = await fetch(`${API}/api/admin/vets/${vetId}/time-blocks`, {
         headers: authHeaders()
       });
+      if (!res.ok) throw new Error('Error cargando bloques');
       const data = await res.json();
-      const byDay = {};
-      data.rules.forEach(r => {
-        if (!byDay[r.weekday]) byDay[r.weekday] = [];
-        if (byDay[r.weekday].length < 2) byDay[r.weekday].push(r);
-      });
-      for (let d = 1; d <= 7; d++) {
-        const rules = byDay[d] || [];
-        [0, 1].forEach(i => {
-          const r = rules[i];
-          document.getElementById(`d${d}r${i+1}s`).value = r ? minToTime(r.startMin) : '';
-          document.getElementById(`d${d}r${i+1}e`).value = r ? minToTime(r.endMin) : '';
-        });
-      }
+      renderTimeBlocks(data.blocks);
     } catch (e) {
-      showErr('sched-error', 'No se pudo cargar el horario.');
+      showErr('sched-error', `Error cargando bloques: ${e.message}`);
     }
   }
 
-  document.getElementById('btn-save-sched').addEventListener('click', async () => {
-    hideErr('sched-error');
-    document.getElementById('sched-success').style.display = 'none';
-    const rules = [];
-    for (let d = 1; d <= 7; d++) {
-      for (let i = 1; i <= 2; i++) {
-        const s = document.getElementById(`d${d}r${i}s`).value;
-        const e = document.getElementById(`d${d}r${i}e`).value;
-        if (s && e) {
-          const startMin = timeToMin(s);
-          const endMin = timeToMin(e);
-          if (startMin >= endMin) {
-            showErr('sched-error', `${DAYS[d]} rango ${i}: inicio antes que fin.`);
-            return;
-          }
-          rules.push({ weekday: d, startMin, endMin });
-        }
-      }
+  function renderTimeBlocks(blocks) {
+    const list = document.getElementById('blocks-list');
+    if (!blocks || blocks.length === 0) {
+      list.innerHTML = '<p style="color: #999; font-size: 0.9rem;">No hay bloques de disponibilidad aún.</p>';
+      return;
     }
+    list.innerHTML = blocks.map(b => {
+      const start = new Date(b.start_ms);
+      const end = new Date(b.end_ms);
+      const startStr = start.toLocaleString('es-VE');
+      const endStr = end.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+      return `
+        <div style="border: 1px solid #e0e0e0; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; background: #fafaf8;">
+          <div>
+            <strong style="font-size: 0.95rem;">${startStr}</strong><br/>
+            <span style="color: #666; font-size: 0.85rem;">Hasta ${endStr}</span>
+          </div>
+          <button class="btn btn-sm btn-danger" onclick="deleteTimeBlock('${b.id}')">Eliminar</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function deleteTimeBlock(blockId) {
+    if (!confirm('¿Eliminar este bloque de disponibilidad?')) return;
     try {
-      const res = await fetch(`${API}/api/admin/vets/${vetId}/availability`, {
-        method: 'PUT',
-        headers: authHeaders(),
-        body: JSON.stringify({ rules })
+      hideErr('sched-error');
+      const res = await fetch(`${API}/api/admin/vets/${vetId}/time-blocks/${blockId}`, {
+        method: 'DELETE',
+        headers: authHeaders()
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
-      const suc = document.getElementById('sched-success');
-      suc.textContent = '✓ Horario guardado correctamente.';
-      suc.style.display = 'block';
-      setTimeout(() => suc.style.display = 'none', 3000);
+      if (!res.ok) throw new Error('Error eliminando bloque');
+      showSuccessMsg('sched-success', '✓ Bloque eliminado.');
+      await loadTimeBlocks();
     } catch (e) {
-      showErr('sched-error', e.message);
+      showErr('sched-error', `Error: ${e.message}`);
+    }
+  }
+
+  // Agregar bloque
+  document.getElementById('btn-add-block').addEventListener('click', async () => {
+    hideErr('sched-error');
+    const startVal = document.getElementById('block-start').value;
+    const endTimeVal = document.getElementById('block-end').value;
+
+    if (!startVal || !endTimeVal) {
+      showErr('sched-error', 'Completa fecha/hora inicio y hora fin.');
+      return;
+    }
+
+    // Parsear fecha inicio
+    const startDate = new Date(startVal);
+    const startMs = startDate.getTime();
+
+    // Parsear hora fin (usar la misma fecha que inicio)
+    const [endHour, endMin] = endTimeVal.split(':');
+    const endDate = new Date(startDate);
+    endDate.setHours(parseInt(endHour), parseInt(endMin), 0, 0);
+    const endMs = endDate.getTime();
+
+    if (startMs >= endMs) {
+      showErr('sched-error', 'La hora fin debe ser después del inicio.');
+      return;
+    }
+
+    try {
+      hideErr('sched-error');
+      const res = await fetch(`${API}/api/admin/vets/${vetId}/time-blocks`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ startMs, endMs, durationMinutes: 30 })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Error creando bloque');
+      }
+      showSuccessMsg('sched-success', '✓ Bloque agregado.');
+      document.getElementById('block-start').value = '';
+      document.getElementById('block-end').value = '';
+      await loadTimeBlocks();
+    } catch (e) {
+      showErr('sched-error', `Error: ${e.message}`);
     }
   });
+
+  function showSuccessMsg(id, text) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 3000);
+  }
 
   // --- AUSENCIAS ---
   document.getElementById('btn-add-timeoff').addEventListener('click', async () => {
