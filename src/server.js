@@ -871,7 +871,69 @@ app.get('/api/admin/vets/:vetId/appointments', googleAuth.requireAuth, async (re
 });
 
 // ============================================
-// VET AVAILABILITY (Protegidas - Vet puede ver/editar su disponibilidad)
+// VET TIME BLOCKS (Bloques flexibles de tiempo)
+// ============================================
+
+app.get('/api/admin/vets/:vetId/time-blocks', async (req, res) => {
+  try {
+    const { vetId } = req.params;
+    const fromMs = parseInt(req.query.from) || Date.now() - 86400000;
+    const toMs = parseInt(req.query.to) || Date.now() + 30 * 86400000;
+
+    const blocks = await db.getVetTimeBlocks(vetId, fromMs, toMs);
+    res.json({ blocks });
+  } catch (err) {
+    console.error(`❌ Error getting time blocks: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/vets/:vetId/time-blocks', googleAuth.requireAuth, async (req, res) => {
+  try {
+    const { vetId } = req.params;
+    const { startMs, endMs, durationMinutes } = req.body;
+
+    // Verificar que sea el mismo vet o admin
+    if (req.vetId && req.vetId !== vetId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    if (!startMs || !endMs) {
+      return res.status(400).json({ error: 'startMs and endMs required' });
+    }
+
+    console.log(`⏱️  Creando bloque de tiempo para ${vetId}: ${new Date(startMs).toISOString()} - ${new Date(endMs).toISOString()}`);
+
+    const block = await db.createTimeBlock(vetId, startMs, endMs, durationMinutes || 30);
+    console.log(`✅ Bloque creado: ${block.id}`);
+    res.status(201).json({ block });
+  } catch (err) {
+    console.error(`❌ Error creating time block: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/vets/:vetId/time-blocks/:blockId', googleAuth.requireAuth, async (req, res) => {
+  try {
+    const { vetId, blockId } = req.params;
+
+    // Verificar que sea el mismo vet o admin
+    if (req.vetId && req.vetId !== vetId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    console.log(`🗑️  Eliminando bloque ${blockId}`);
+    await db.deleteTimeBlock(blockId);
+    console.log(`✅ Bloque eliminado`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(`❌ Error deleting time block: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// VET AVAILABILITY (Horario semanal - legacy)
 // ============================================
 
 app.get('/api/admin/vets/:vetId/availability', googleAuth.requireAuth, async (req, res) => {
