@@ -25,7 +25,7 @@ Token: ${invitationToken}
 
   try {
     const result = await resend.emails.send({
-      from: 'Wolf SOS <noreply@wolfsos.resend.dev>',
+      from: 'Wolf SOS <onboarding@resend.dev>',
       to: vetEmail,
       subject: '🐾 Invitación a Wolf SOS - Plataforma de Consultas Veterinarias',
       html: `
@@ -78,7 +78,7 @@ async function sendAppointmentConfirmation(tutorEmail, tutorWhatsapp, vetName, a
 
   try {
     const result = await resend.emails.send({
-      from: 'Wolf SOS <noreply@wolfsos.resend.dev>',
+      from: 'Wolf SOS <onboarding@resend.dev>',
       to: tutorEmail,
       subject: '📅 Confirmación de Cita - Wolf SOS',
       html: `
