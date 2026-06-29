@@ -114,7 +114,117 @@ async function sendAppointmentConfirmation(tutorEmail, tutorWhatsapp, vetName, a
   }
 }
 
+// Enviar confirmación de cita al tutor
+async function sendAppointmentConfirmationToTutor(tutorEmail, tutorWhatsapp, vetName, appointmentTime, meetLink) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`📧 Confirmación de cita para ${tutorEmail} (email no configurado)`);
+    return;
+  }
+
+  try {
+    const result = await resend.emails.send({
+      from: 'Wolf SOS <onboarding@resend.dev>',
+      to: tutorEmail,
+      subject: '📅 Confirmación de Cita Veterinaria - Wolf SOS',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #2d6a4f;">¡Cita Confirmada! 🎉</h2>
+
+          <p>Tu consulta veterinaria ha sido agendada exitosamente.</p>
+
+          <div style="background: #f0faf4; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>Veterinario:</strong> ${vetName}</p>
+            <p><strong>Hora:</strong> ${appointmentTime}</p>
+            <p><strong>Tu WhatsApp:</strong> ${tutorWhatsapp}</p>
+          </div>
+
+          ${meetLink ? `
+          <p><strong>🔗 Enlace de la consulta:</strong></p>
+          <p>
+            <a href="${meetLink}" style="display: inline-block; background: #2d6a4f; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+              Acceder a Google Meet
+            </a>
+          </p>
+          <p style="color: #666; font-size: 0.9rem;">O copia este enlace: ${meetLink}</p>
+          ` : ''}
+
+          <p style="color: #666;">El veterinario te contactará por WhatsApp 15 minutos antes de la cita.</p>
+
+          <p style="color: #999; font-size: 0.85rem; margin-top: 40px;">
+            Wolf SOS - Plataforma de Consultas Veterinarias
+          </p>
+        </div>
+      `,
+    });
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
+    console.log(`✉️  Confirmación de cita enviada a ${tutorEmail}`);
+    return result;
+  } catch (err) {
+    console.error(`❌ Error enviando confirmación:`, err.message);
+    // No fallar si hay error de email
+  }
+}
+
+// Enviar recordatorio al veterinario
+async function sendAppointmentReminderToVet(vetEmail, vetWhatsapp, tutorName, tutorWhatsapp, animalName, appointmentTime, meetLink) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`📧 Recordatorio para ${vetEmail} (email no configurado)`);
+    return;
+  }
+
+  try {
+    const result = await resend.emails.send({
+      from: 'Wolf SOS <onboarding@resend.dev>',
+      to: vetEmail,
+      subject: `📅 Recordatorio de Cita - ${animalName} con ${tutorName}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #2d6a4f;">Recordatorio de Cita 🐾</h2>
+
+          <div style="background: #f0faf4; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>Animal:</strong> ${animalName}</p>
+            <p><strong>Tutor:</strong> ${tutorName}</p>
+            <p><strong>WhatsApp del tutor:</strong> ${tutorWhatsapp}</p>
+            <p><strong>Hora de la cita:</strong> ${appointmentTime}</p>
+          </div>
+
+          ${meetLink ? `
+          <p><strong>🔗 Google Meet:</strong></p>
+          <p>
+            <a href="${meetLink}" style="display: inline-block; background: #2d6a4f; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+              Abrir Google Meet
+            </a>
+          </p>
+          ` : ''}
+
+          <p style="color: #666;">Recuerda contactar al tutor 15 minutos antes de la cita.</p>
+
+          <p style="color: #999; font-size: 0.85rem; margin-top: 40px;">
+            Wolf SOS - Plataforma de Consultas Veterinarias
+          </p>
+        </div>
+      `,
+    });
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
+    console.log(`✉️  Recordatorio enviado a ${vetEmail}`);
+    return result;
+  } catch (err) {
+    console.error(`❌ Error enviando recordatorio:`, err.message);
+    // No fallar si hay error de email
+  }
+}
+
 module.exports = {
   sendVetInvitationEmail,
   sendAppointmentConfirmation,
+  sendAppointmentConfirmationToTutor,
+  sendAppointmentReminderToVet,
 };
