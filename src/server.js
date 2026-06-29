@@ -157,17 +157,29 @@ app.post('/api/vets/register-simple', async (req, res) => {
     if (!password) return res.status(400).json({ error: 'Password required' });
     if (!invitationToken) return res.status(400).json({ error: 'Invitation token required' });
 
+    console.log(`📝 Vet registration attempt with token: ${invitationToken.substring(0, 20)}...`);
+
     // Validar invitación
-    const invitation = await adminService.validateInvitationToken(invitationToken);
+    let invitation;
+    try {
+      invitation = await adminService.validateInvitationToken(invitationToken);
+    } catch (err) {
+      console.error(`❌ Invalid invitation token: ${err.message}`);
+      return res.status(403).json({ error: `Invalid invitation: ${err.message}` });
+    }
+
     if (!invitation) {
-      return res.status(403).json({ error: 'Invalid invitation token' });
+      console.error('❌ Invitation not found');
+      return res.status(403).json({ error: 'Invitation token not found' });
     }
 
     const email = invitation.email;
+    console.log(`✓ Invitation valid for email: ${email}`);
 
     // Verificar que no exista vet
     const existing = await db.getVet(email);
     if (existing) {
+      console.warn(`⚠️  Email already registered: ${email}`);
       return res.status(400).json({ error: 'Email already registered' });
     }
 
@@ -185,6 +197,8 @@ app.post('/api/vets/register-simple', async (req, res) => {
       invitation.location || null,
       null // bio
     );
+
+    console.log(`✅ Vet created: ${vet.id}`);
 
     // Marcar invitación como usada
     await adminService.useInvitation(invitationToken, vet.id);
@@ -206,6 +220,7 @@ app.post('/api/vets/register-simple', async (req, res) => {
       }
     });
   } catch (err) {
+    console.error(`❌ Registration error: ${err.message}`);
     res.status(400).json({ error: err.message });
   }
 });
