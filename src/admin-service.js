@@ -19,16 +19,15 @@ async function inviteVet(adminId, vetData) {
     invitedBy: adminId,
   });
 
-  const invitationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3003'}/vet-register.html?token=${invitation.token}`;
+  const baseUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://wolfsos.onrender.com' : 'http://localhost:3003');
+  const invitationUrl = `${baseUrl}/vet-register.html?token=${invitation.token}`;
 
   return {
     invitationId: invitation.id,
     token: invitation.token,
     email: invitation.email,
     name: vetData.name,
-    specialty: vetData.specialty,
     whatsapp: vetData.whatsapp,
-    location: vetData.location,
     invitationUrl: invitationUrl,
   };
 }

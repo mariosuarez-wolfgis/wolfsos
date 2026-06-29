@@ -174,27 +174,13 @@
       <h3>Invitar Nuevo Veterinario</h3>
       <form id="inviteForm">
         <div class="form-group">
+          <label>Email del Veterinario *</label>
+          <input type="email" id="inviteEmail" placeholder="doctor@gmail.com" required>
+        </div>
+
+        <div class="form-group">
           <label>Nombre Completo *</label>
           <input type="text" id="inviteName" placeholder="Dr. Juan García" required>
-        </div>
-
-        <div class="form-group">
-          <label>Email *</label>
-          <input type="email" id="inviteEmail" placeholder="juan@example.com" required>
-        </div>
-
-        <div class="form-group">
-          <label>Especialidad *</label>
-          <select id="inviteSpecialty" required>
-            <option value="">Seleccionar...</option>
-            <option>Medicina General</option>
-            <option>Cirugía Veterinaria</option>
-            <option>Oftalmología</option>
-            <option>Dermatología</option>
-            <option>Cardiología</option>
-            <option>Medicina Interna</option>
-            <option>Otra</option>
-          </select>
         </div>
 
         <div class="form-group">
@@ -202,10 +188,9 @@
           <input type="tel" id="inviteWhatsapp" placeholder="+58 414 0000000" required>
         </div>
 
-        <div class="form-group">
-          <label>Ubicación / Zona de atención</label>
-          <input type="text" id="inviteLocation" placeholder="Caracas, Chacao">
-        </div>
+        <p style="color: #999; font-size: 0.85rem; margin-bottom: 20px;">
+          ℹ️ El veterinario completará especialidad, ubicación y datos adicionales en el registro
+        </p>
 
         <button type="submit" class="btn">Generar Invitación</button>
         <div id="inviteError" class="error" style="display: none;"></div>
@@ -344,18 +329,16 @@
   // INVITAR VET
   document.getElementById('inviteForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = document.getElementById('inviteName').value.trim();
     const email = document.getElementById('inviteEmail').value.trim();
-    const specialty = document.getElementById('inviteSpecialty').value;
+    const name = document.getElementById('inviteName').value.trim();
     const whatsapp = document.getElementById('inviteWhatsapp').value.trim();
-    const location = document.getElementById('inviteLocation').value.trim();
 
     const errEl = document.getElementById('inviteError');
     const resultEl = document.getElementById('invitationResult');
     errEl.style.display = 'none';
     resultEl.style.display = 'none';
 
-    if (!name || !email || !specialty || !whatsapp) {
+    if (!email || !name || !whatsapp) {
       errEl.textContent = 'Por favor completa todos los campos obligatorios (*)';
       errEl.style.display = 'block';
       return;
@@ -365,7 +348,7 @@
       const res = await fetch(`${API}/api/admin/invite`, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ name, email, specialty, whatsapp, location })
+        body: JSON.stringify({ name, email, whatsapp })
       });
 
       const data = await res.json();
