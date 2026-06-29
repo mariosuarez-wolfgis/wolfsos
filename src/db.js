@@ -359,9 +359,61 @@ async function updateInvitation(token, updates) {
 }
 
 async function getAdminStats() {
-  const { data, error } = await supabase.rpc('get_admin_stats');
-  if (error) throw error;
-  return data || {};
+  try {
+    const nowMs = Date.now();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStartMs = todayStart.getTime();
+    const todayEndMs = todayStartMs + 86_400_000;
+
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const weekStartMs = weekStart.getTime();
+    const weekEndMs = weekStartMs + 7 * 86_400_000;
+
+    // Total de vets activos
+    const { data: vets, error: vetsError } = await supabase
+      .from('vets')
+      .select('id', { count: 'exact' })
+      .eq('active', true);
+    if (vetsError) throw vetsError;
+
+    // Citas hoy
+    const { data: apptToday, error: apptTodayError } = await supabase
+      .from('appointments')
+      .select('id', { count: 'exact' })
+      .eq('status', 'booked')
+      .gte('start_ms', todayStartMs)
+      .lt('start_ms', todayEndMs);
+    if (apptTodayError) throw apptTodayError;
+
+    // Citas esta semana
+    const { data: apptWeek, error: apptWeekError } = await supabase
+      .from('appointments')
+      .select('id', { count: 'exact' })
+      .eq('status', 'booked')
+      .gte('start_ms', weekStartMs)
+      .lt('start_ms', weekEndMs);
+    if (apptWeekError) throw apptWeekError;
+
+    // Invitaciones pendientes
+    const { data: invites, error: invitesError } = await supabase
+      .from('vet_invitations')
+      .select('id', { count: 'exact' })
+      .eq('used', false);
+    if (invitesError) throw invitesError;
+
+    return {
+      total_vets: vets?.length || 0,
+      appointments_today: apptToday?.length || 0,
+      appointments_this_week: apptWeek?.length || 0,
+      pending_invitations: invites?.length || 0,
+    };
+  } catch (err) {
+    console.error('Error getting admin stats:', err);
+    throw err;
+  }
 }
 
 module.exports = {

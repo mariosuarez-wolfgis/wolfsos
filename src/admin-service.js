@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const db = require('./db');
+const emailService = require('./email-service');
 
 // Generar token único de invitación
 function generateInvitationToken() {
@@ -18,11 +19,21 @@ async function inviteVet(adminId, email) {
     invitedBy: adminId,
   });
 
+  const invitationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3003'}/vet-register.html?token=${invitation.token}`;
+
+  // Enviar email de invitación
+  try {
+    await emailService.sendVetInvitationEmail(email, invitationUrl, invitation.token);
+  } catch (err) {
+    console.error('Error sending invitation email:', err.message);
+    // No fallar la invitación si hay error de email
+  }
+
   return {
     invitationId: invitation.id,
     token: invitation.token,
     email: invitation.email,
-    invitationUrl: `${process.env.FRONTEND_URL || 'http://localhost:3003'}/vet-register?token=${invitation.token}`,
+    invitationUrl: invitationUrl,
   };
 }
 
