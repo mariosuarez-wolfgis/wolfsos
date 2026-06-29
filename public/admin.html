@@ -239,6 +239,25 @@
   let vetId = '';
   let vetName = '';
 
+  // Recuperar sesión guardada al cargar la página
+  window.addEventListener('load', () => {
+    const savedToken = localStorage.getItem('vetToken');
+    const savedVetId = localStorage.getItem('vetId');
+    const savedVetName = localStorage.getItem('vetName');
+
+    if (savedToken && savedVetId && savedVetName) {
+      authToken = savedToken;
+      vetId = savedVetId;
+      vetName = savedVetName;
+
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('main-panel').style.display = 'block';
+      document.getElementById('header-name').textContent = vetName;
+
+      loadTimeBlocks();
+    }
+  });
+
   // --- LOGIN ---
   document.getElementById('btn-login').addEventListener('click', async () => {
     const email = document.getElementById('l-email').value.trim();
@@ -258,6 +277,11 @@
       vetId = data.vet.id;
       vetName = data.vet.name;
 
+      // Guardar en localStorage
+      localStorage.setItem('vetToken', authToken);
+      localStorage.setItem('vetId', vetId);
+      localStorage.setItem('vetName', vetName);
+
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('main-panel').style.display = 'block';
       document.getElementById('header-name').textContent = vetName;
@@ -274,6 +298,12 @@
     authToken = '';
     vetId = '';
     vetName = '';
+
+    // Limpiar localStorage
+    localStorage.removeItem('vetToken');
+    localStorage.removeItem('vetId');
+    localStorage.removeItem('vetName');
+
     document.getElementById('login-screen').style.display = 'block';
     document.getElementById('main-panel').style.display = 'none';
     document.getElementById('l-email').value = '';
@@ -317,17 +347,26 @@
 
   function renderTimeBlocks(blocks) {
     const list = document.getElementById('blocks-list');
-    if (!blocks || blocks.length === 0) {
-      list.innerHTML = '<p style="color: #999; font-size: 0.9rem;">No hay bloques de disponibilidad aún.</p>';
+    const now = Date.now();
+
+    // Filtrar bloques futuros (solo mostrar horarios que no hayan pasado)
+    const futureBlocks = (blocks || []).filter(b => b.end_ms > now);
+
+    if (!futureBlocks || futureBlocks.length === 0) {
+      list.innerHTML = '<p style="color: #999; font-size: 0.9rem;">No hay bloques de disponibilidad futuros.</p>';
       return;
     }
-    list.innerHTML = blocks.map(b => {
+
+    list.innerHTML = futureBlocks.map(b => {
       const start = new Date(b.start_ms);
       const end = new Date(b.end_ms);
       const startStr = start.toLocaleString('es-VE');
       const endStr = end.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+      const isPast = b.end_ms <= now;
+      const style = isPast ? 'opacity: 0.5; text-decoration: line-through;' : '';
+
       return `
-        <div style="border: 1px solid #e0e0e0; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; background: #fafaf8;">
+        <div style="border: 1px solid #e0e0e0; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; background: #fafaf8; ${style}">
           <div>
             <strong style="font-size: 0.95rem;">${startStr}</strong><br/>
             <span style="color: #666; font-size: 0.85rem;">Hasta ${endStr}</span>
