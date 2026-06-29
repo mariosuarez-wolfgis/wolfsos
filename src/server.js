@@ -193,6 +193,88 @@ app.post('/api/vets/login', async (req, res) => {
 });
 
 // ============================================
+// VET REGISTER (Completo - Con datos profesionales)
+// ============================================
+
+app.post('/api/vets/register-complete', async (req, res) => {
+  try {
+    const { password, invitationToken, specialty, licenseNumber, location, bio } = req.body;
+
+    if (!password) return res.status(400).json({ error: 'Password required' });
+    if (!invitationToken) return res.status(400).json({ error: 'Invitation token required' });
+    if (!specialty) return res.status(400).json({ error: 'Specialty required' });
+    if (!licenseNumber) return res.status(400).json({ error: 'License number required' });
+    if (!location) return res.status(400).json({ error: 'Location required' });
+
+    console.log(`📝 Vet complete registration with token: ${invitationToken.substring(0, 20)}...`);
+
+    // Validar invitación
+    let invitation;
+    try {
+      invitation = await adminService.validateInvitationToken(invitationToken);
+    } catch (err) {
+      console.error(`❌ Invalid invitation token: ${err.message}`);
+      return res.status(403).json({ error: `Invalid invitation: ${err.message}` });
+    }
+
+    if (!invitation) {
+      console.error('❌ Invitation not found');
+      return res.status(403).json({ error: 'Invitation token not found' });
+    }
+
+    const email = invitation.email;
+    console.log(`✓ Invitation valid for email: ${email}`);
+
+    // Verificar que no exista vet
+    const existing = await db.getVet(email);
+    if (existing) {
+      console.warn(`⚠️  Email already registered: ${email}`);
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    // Hashear contraseña
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Crear vet con datos completos
+    const vet = await db.createVetWithPassword(
+      email,
+      hashedPassword,
+      specialty,
+      licenseNumber,
+      invitation.whatsapp || null,
+      location,
+      bio || null
+    );
+
+    console.log(`✅ Vet created: ${vet.id}`);
+
+    // Marcar invitación como usada
+    await adminService.useInvitation(invitationToken, vet.id);
+
+    // Generar JWT para sesión
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+    const vetToken = jwt.sign(
+      { vetId: vet.id, email: vet.email },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      token: vetToken,
+      vet: {
+        id: vet.id,
+        email: vet.email,
+      }
+    });
+  } catch (err) {
+    console.error(`❌ Registration error: ${err.message}`);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ============================================
 // VET REGISTER (Simple - Solo contraseña)
 // ============================================
 
