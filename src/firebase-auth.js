@@ -2,6 +2,21 @@
 
 const admin = require('firebase-admin');
 const path = require('path');
+const fs = require('fs');
+
+// Si FIREBASE_CONFIG_B64 está configurado, crear el archivo
+if (process.env.FIREBASE_CONFIG_B64) {
+  const configPath = path.join(__dirname, 'firebase-config.json');
+  if (!fs.existsSync(configPath)) {
+    try {
+      const decoded = Buffer.from(process.env.FIREBASE_CONFIG_B64, 'base64').toString('utf-8');
+      fs.writeFileSync(configPath, decoded);
+      console.log('✅ firebase-config.json creado desde FIREBASE_CONFIG_B64');
+    } catch (err) {
+      console.error('❌ Error decodificando FIREBASE_CONFIG_B64:', err.message);
+    }
+  }
+}
 
 // Inicializar Firebase Admin
 const serviceAccount = require('./firebase-config.json');
