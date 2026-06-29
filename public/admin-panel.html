@@ -303,11 +303,17 @@
   // INVITAR VET
   document.getElementById('inviteForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = document.getElementById('inviteEmail').value;
+    const email = document.getElementById('inviteEmail').value.trim();
     const errEl = document.getElementById('inviteError');
     const sucEl = document.getElementById('inviteSuccess');
     errEl.style.display = 'none';
     sucEl.style.display = 'none';
+
+    if (!email) {
+      errEl.textContent = 'Por favor ingresa un email válido';
+      errEl.style.display = 'block';
+      return;
+    }
 
     try {
       const res = await fetch(`${API}/api/admin/invite`, {
@@ -315,17 +321,25 @@
         headers: authHeaders(),
         body: JSON.stringify({ email })
       });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Error');
-      }
+
       const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || `Error: ${res.status}`);
+      }
+
       sucEl.textContent = `✓ Invitación enviada a ${email}`;
       sucEl.style.display = 'block';
       document.getElementById('inviteEmail').value = '';
-    } catch (e) {
-      errEl.textContent = `✗ ${e.message}`;
+
+      // Recargar invitaciones pendientes después de 1 segundo
+      setTimeout(() => {
+        loadStats();
+      }, 1000);
+    } catch (err) {
+      errEl.textContent = `Error: ${err.message}`;
       errEl.style.display = 'block';
+      console.error('Invite error:', err);
     }
   });
 
