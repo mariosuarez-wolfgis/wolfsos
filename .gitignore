@@ -21,6 +21,7 @@ agenda.db-wal
 .env
 .env.local
 .env.*.local
+src/firebase-config.json
 
 # IDE
 .vscode/
