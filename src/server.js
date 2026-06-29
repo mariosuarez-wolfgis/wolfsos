@@ -534,10 +534,19 @@ app.get('/api/admin/vets/:vetId/appointments', googleAuth.requireAuth, async (re
 
 app.post('/api/admin/invite', googleAuth.requireAdmin, async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, name, specialty, whatsapp, location } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
+    if (!name) return res.status(400).json({ error: 'Name required' });
+    if (!specialty) return res.status(400).json({ error: 'Specialty required' });
+    if (!whatsapp) return res.status(400).json({ error: 'WhatsApp required' });
 
-    const result = await adminService.inviteVet(req.adminId, email);
+    const result = await adminService.inviteVet(req.adminId, {
+      email,
+      name,
+      specialty,
+      whatsapp,
+      location: location || null,
+    });
     res.status(201).json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });

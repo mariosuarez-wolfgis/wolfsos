@@ -170,17 +170,58 @@
 
   <!-- TAB: INVITAR VET -->
   <div id="tab-invite" class="panel">
-    <div class="card" style="max-width: 500px;">
+    <div class="card" style="max-width: 600px;">
       <h3>Invitar Nuevo Veterinario</h3>
       <form id="inviteForm">
         <div class="form-group">
-          <label>Email *</label>
-          <input type="email" id="inviteEmail" placeholder="nuevo-vet@gmail.com" required>
+          <label>Nombre Completo *</label>
+          <input type="text" id="inviteName" placeholder="Dr. Juan García" required>
         </div>
-        <button type="submit" class="btn">Enviar Invitación</button>
+
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" id="inviteEmail" placeholder="juan@example.com" required>
+        </div>
+
+        <div class="form-group">
+          <label>Especialidad *</label>
+          <select id="inviteSpecialty" required>
+            <option value="">Seleccionar...</option>
+            <option>Medicina General</option>
+            <option>Cirugía Veterinaria</option>
+            <option>Oftalmología</option>
+            <option>Dermatología</option>
+            <option>Cardiología</option>
+            <option>Medicina Interna</option>
+            <option>Otra</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>WhatsApp / Teléfono *</label>
+          <input type="tel" id="inviteWhatsapp" placeholder="+58 414 0000000" required>
+        </div>
+
+        <div class="form-group">
+          <label>Ubicación / Zona de atención</label>
+          <input type="text" id="inviteLocation" placeholder="Caracas, Chacao">
+        </div>
+
+        <button type="submit" class="btn">Generar Invitación</button>
         <div id="inviteError" class="error" style="display: none;"></div>
-        <div id="inviteSuccess" class="success" style="display: none;"></div>
       </form>
+
+      <!-- Enlace de invitación generado -->
+      <div id="invitationResult" style="display: none; margin-top: 30px; padding: 20px; background: #f0faf4; border-radius: 12px;">
+        <h4 style="color: #2d6a4f; margin-bottom: 15px;">✅ Invitación Generada</h4>
+        <p style="color: #666; margin-bottom: 15px;">Copia este enlace y envíalo al médico por email o WhatsApp:</p>
+        <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 15px; word-break: break-all;">
+          <code id="invitationLink" style="font-size: 0.85rem;"></code>
+        </div>
+        <button type="button" id="copyLinkBtn" style="background: #2d6a4f; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+          📋 Copiar Enlace
+        </button>
+      </div>
     </div>
   </div>
 
@@ -303,14 +344,19 @@
   // INVITAR VET
   document.getElementById('inviteForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const name = document.getElementById('inviteName').value.trim();
     const email = document.getElementById('inviteEmail').value.trim();
-    const errEl = document.getElementById('inviteError');
-    const sucEl = document.getElementById('inviteSuccess');
-    errEl.style.display = 'none';
-    sucEl.style.display = 'none';
+    const specialty = document.getElementById('inviteSpecialty').value;
+    const whatsapp = document.getElementById('inviteWhatsapp').value.trim();
+    const location = document.getElementById('inviteLocation').value.trim();
 
-    if (!email) {
-      errEl.textContent = 'Por favor ingresa un email válido';
+    const errEl = document.getElementById('inviteError');
+    const resultEl = document.getElementById('invitationResult');
+    errEl.style.display = 'none';
+    resultEl.style.display = 'none';
+
+    if (!name || !email || !specialty || !whatsapp) {
+      errEl.textContent = 'Por favor completa todos los campos obligatorios (*)';
       errEl.style.display = 'block';
       return;
     }
@@ -319,7 +365,7 @@
       const res = await fetch(`${API}/api/admin/invite`, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ name, email, specialty, whatsapp, location })
       });
 
       const data = await res.json();
@@ -328,11 +374,21 @@
         throw new Error(data.error || `Error: ${res.status}`);
       }
 
-      sucEl.textContent = `✓ Invitación enviada a ${email}`;
-      sucEl.style.display = 'block';
-      document.getElementById('inviteEmail').value = '';
+      // Mostrar enlace de invitación
+      document.getElementById('invitationLink').textContent = data.invitationUrl;
+      resultEl.style.display = 'block';
 
-      // Recargar invitaciones pendientes después de 1 segundo
+      // Botón copiar
+      document.getElementById('copyLinkBtn').addEventListener('click', () => {
+        navigator.clipboard.writeText(data.invitationUrl).then(() => {
+          alert('✓ Enlace copiado al portapapeles');
+        });
+      });
+
+      // Limpiar formulario
+      document.getElementById('inviteForm').reset();
+
+      // Recargar stats
       setTimeout(() => {
         loadStats();
       }, 1000);

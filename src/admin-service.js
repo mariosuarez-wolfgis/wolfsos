@@ -10,30 +10,25 @@ function generateInvitationToken() {
 }
 
 // Invitar veterinario (solo admin)
-async function inviteVet(adminId, email) {
+async function inviteVet(adminId, vetData) {
   const token = generateInvitationToken();
 
   const invitation = await db.createInvitation({
     token,
-    email,
+    email: vetData.email,
     invitedBy: adminId,
   });
 
   const invitationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3003'}/vet-register.html?token=${invitation.token}`;
 
-  // Enviar email de invitación EN BACKGROUND (no esperar)
-  setImmediate(async () => {
-    try {
-      await emailService.sendVetInvitationEmail(email, invitationUrl, invitation.token);
-    } catch (err) {
-      console.error('❌ Error sending invitation email to', email, ':', err.message);
-    }
-  });
-
   return {
     invitationId: invitation.id,
     token: invitation.token,
     email: invitation.email,
+    name: vetData.name,
+    specialty: vetData.specialty,
+    whatsapp: vetData.whatsapp,
+    location: vetData.location,
     invitationUrl: invitationUrl,
   };
 }
