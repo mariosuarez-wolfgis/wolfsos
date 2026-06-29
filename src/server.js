@@ -147,49 +147,45 @@ app.post('/api/vets/login', async (req, res) => {
 });
 
 // ============================================
-// VET REGISTER (Firebase)
+// VET REGISTER (Email/Password)
 // ============================================
 
-app.post('/api/vets/register-firebase', async (req, res) => {
+app.post('/api/vets/register', async (req, res) => {
   try {
-    const { idToken, invitationToken, specialty, licenseNumber, whatsapp, location, bio } = req.body;
-    if (!idToken) return res.status(400).json({ error: 'Firebase idToken required' });
+    const { email, password, invitationToken, specialty, licenseNumber, whatsapp, location, bio } = req.body;
+
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    if (!password) return res.status(400).json({ error: 'Password required' });
     if (!invitationToken) return res.status(400).json({ error: 'Invitation token required' });
     if (!specialty) return res.status(400).json({ error: 'Specialty required' });
     if (!licenseNumber) return res.status(400).json({ error: 'License number required' });
     if (!whatsapp) return res.status(400).json({ error: 'WhatsApp required' });
 
-    // Validar token de Firebase
-    const firebaseUser = await verifyFirebaseToken(idToken);
-
     // Validar invitación
     const invitation = await adminService.validateInvitationToken(invitationToken);
-    if (invitation.email !== firebaseUser.email) {
+    if (invitation.email !== email) {
       return res.status(403).json({ error: 'Email does not match invitation' });
     }
 
     // Verificar que no exista vet
-    const existing = await db.getVet(firebaseUser.email);
+    const existing = await db.getVet(email);
     if (existing) {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Crear vet con datos completos
-    const vetData = {
-      specialty,
-      whatsapp,
-      licenseNumber,
-      location: location || null,
-      bio: bio || null,
-    };
+    // Hashear contraseña
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    const vet = await db.createVetWithGoogle(
-      firebaseUser.email,
-      firebaseUser.name,
-      firebaseUser.picture,
-      null, // accessToken - no usamos directamente con Firebase
-      null, // refreshToken
-      vetData
+    // Crear vet con contraseña
+    const vet = await db.createVetWithPassword(
+      email,
+      hashedPassword,
+      specialty,
+      licenseNumber,
+      whatsapp,
+      location || null,
+      bio || null
     );
 
     // Marcar invitación como usada

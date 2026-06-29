@@ -71,6 +71,29 @@ async function createVetWithGoogle(email, name, picture, accessToken, refreshTok
   return data;
 }
 
+async function createVetWithPassword(email, passwordHash, specialty, licenseNumber, whatsapp, location, bio) {
+  const id = uuidv4();
+  const { data, error } = await supabase
+    .from('vets')
+    .insert([{
+      id,
+      email,
+      password_hash: passwordHash,
+      name: email.split('@')[0], // Usar email como nombre temporal
+      picture: null,
+      specialty,
+      whatsapp,
+      license_number: licenseNumber,
+      location,
+      bio,
+      active: true,
+    }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 async function updateVetGoogleTokens(vetId, accessToken, refreshToken) {
   const { error } = await supabase
     .from('vets')
@@ -423,6 +446,7 @@ module.exports = {
   getVet,
   getVetById,
   createVetWithGoogle,
+  createVetWithPassword,
   updateVetGoogleTokens,
   // Admin
   getAdmin,
