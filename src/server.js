@@ -286,7 +286,9 @@ app.post('/api/admin/login-firebase', async (req, res) => {
     const { idToken } = req.body;
     if (!idToken) return res.status(400).json({ error: 'Firebase idToken required' });
 
+    // Verificar Firebase
     const firebaseUser = await verifyFirebaseToken(idToken);
+    if (!firebaseUser) return res.status(503).json({ error: 'Firebase not configured' });
 
     // Verificar que sea admin (email debe ser patitas@wolfsos.com)
     const adminEmail = process.env.ADMIN_EMAIL || 'patitas@wolfsos.com';
@@ -295,16 +297,16 @@ app.post('/api/admin/login-firebase', async (req, res) => {
     }
 
     // Obtener o crear admin en BD
-    let admin = await db.getAdmin(firebaseUser.email);
-    if (!admin) {
-      admin = await db.createAdmin(firebaseUser.email, firebaseUser.name, firebaseUser.picture);
+    let adminUser = await db.getAdmin(firebaseUser.email);
+    if (!adminUser) {
+      adminUser = await db.createAdmin(firebaseUser.email, firebaseUser.name, firebaseUser.picture);
     }
 
     // Generar JWT para usar en el panel
     const jwt = require('jsonwebtoken');
     const JWT_SECRET = process.env.JWT_SECRET || 'secret';
     const adminToken = jwt.sign(
-      { adminId: admin.id, email: admin.email, role: 'admin' },
+      { adminId: adminUser.id, email: adminUser.email, role: 'admin' },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -312,9 +314,9 @@ app.post('/api/admin/login-firebase', async (req, res) => {
     res.json({
       token: adminToken,
       admin: {
-        id: admin.id,
-        email: admin.email,
-        name: admin.name,
+        id: adminUser.id,
+        email: adminUser.email,
+        name: adminUser.name,
       }
     });
   } catch (err) {
