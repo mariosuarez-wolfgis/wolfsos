@@ -7,12 +7,18 @@ const db = require('./db');
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 const JWT_EXPIRY = '7d';
 
+// Detectar URL de redirección basado en el entorno
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+const redirectUri = isProduction
+  ? (process.env.GOOGLE_REDIRECT_URI_PROD || 'https://wolfsos.onrender.com/auth/google/callback')
+  : (process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3003/auth/google/callback');
+
+console.log(`🔐 Google OAuth redirect_uri: ${redirectUri}`);
+
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  process.env.NODE_ENV === 'production'
-    ? process.env.GOOGLE_REDIRECT_URI_PROD
-    : process.env.GOOGLE_REDIRECT_URI
+  redirectUri
 );
 
 // --- GENERAR URL DE LOGIN ---
