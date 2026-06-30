@@ -92,7 +92,7 @@ async function createCalendarEvent(eventData) {
     });
   }
 
-  // Construir evento SIN conferencia primero
+  // Construir evento CON conferencia desde el inicio
   const event = {
     summary: `🐾 Consulta Veterinaria - ${animalName}`,
     description: `
@@ -109,6 +109,14 @@ El enlace de Google Meet estará disponible en la invitación de calendario.
     start: { dateTime: startDate, timeZone: vetTimezone },
     end: { dateTime: endDate, timeZone: vetTimezone },
     attendees: attendees,
+    conferenceData: {
+      createRequest: {
+        requestId: uuidv4(),
+        conferenceSolutionKey: {
+          key: 'hangoutsMeet',
+        },
+      },
+    },
     reminders: {
       useDefault: false,
       overrides: [
@@ -119,8 +127,8 @@ El enlace de Google Meet estará disponible en la invitación de calendario.
   };
 
   try {
-    // 1. Crear evento SIN conferencia
-    const createRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+    // Crear evento CON conferencia en el POST inicial
+    const createRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -137,37 +145,18 @@ El enlace de Google Meet estará disponible en la invitación de calendario.
     const createdEvent = await createRes.json();
     console.log(`✅ [GOOGLE CALENDAR] Evento creado: ${createdEvent.id}`);
 
-    // 2. Actualizar evento AGREGANDO conferencia
-    // Usar un requestId único para el PATCH
-    const eventUpdate = {
-      conferenceData: {
-        createRequest: {
-          requestId: uuidv4(),
-          conferenceSolutionKey: {
-            key: 'hangoutsMeet',
-          },
-        },
-      },
-    };
-
-    const updateRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${createdEvent.id}?conferenceDataVersion=1`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(eventUpdate),
-    });
-
+    // Extraer Meet link de la respuesta
     let meetLink = null;
-    if (updateRes.ok) {
-      const updatedEvent = await updateRes.json();
-      meetLink = updatedEvent.conferenceData?.entryPoints?.[0]?.uri || null;
-      console.log(`✅ Conferencia agregada exitosamente. Meet link: ${meetLink}`);
-    } else {
-      const updateErr = await updateRes.json();
-      console.warn(`⚠️  No se pudo agregar conferencia: ${updateErr.error?.message || JSON.stringify(updateErr)}`);
-      console.log(`📹 [GOOGLE CALENDAR] Usando Meet link del evento creado (sin conferencia)`);
+    if (createdEvent.conferenceData && createdEvent.conferenceData.entryPoints) {
+      const meetEntry = createdEvent.conferenceData.entryPoints.find(ep => ep.entryPointType === 'video');
+      if (meetEntry) {
+        meetLink = meetEntry.uri;
+        console.log(`✅ [GOOGLE CALENDAR] Meet link generado: ${meetLink}`);
+      }
+    }
+
+    if (!meetLink) {
+      console.warn(`⚠️  [GOOGLE CALENDAR] No se pudo generar Meet link en la respuesta`);
     }
 
     return {

@@ -233,6 +233,16 @@
             <span style="font-size: .8rem; font-weight: 600; color: #444;">Hora Fin</span>
             <input type="time" id="block-time-to" style="padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: .9rem;">
           </label>
+          <label style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: .8rem; font-weight: 600; color: #444;">Duración de cita</span>
+            <select id="block-slot-duration" style="padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: .9rem;">
+              <option value="20">20 minutos</option>
+              <option value="30" selected>30 minutos</option>
+              <option value="40">40 minutos</option>
+              <option value="50">50 minutos</option>
+              <option value="60">60 minutos</option>
+            </select>
+          </label>
         </div>
 
         <button class="btn btn-primary" id="btn-add-block" style="width: 100%;">Agregar disponibilidad</button>
@@ -638,6 +648,7 @@
     const dateToVal = document.getElementById('block-date-to').value;
     const timeFromVal = document.getElementById('block-time-from').value;
     const timeToVal = document.getElementById('block-time-to').value;
+    const slotDurationVal = parseInt(document.getElementById('block-slot-duration').value);
 
     // Obtener días seleccionados
     const selectedDays = [];
@@ -722,7 +733,7 @@
         body: JSON.stringify({
           startMs: blockStart.getTime(),
           endMs: blockEnd.getTime(),
-          durationMinutes: 30,
+          durationMinutes: slotDurationVal,
           recurringDays: selectedDays,
           recurringEndDate: dateTo.getTime(),
           vetTimezone: vetTimezone
@@ -743,6 +754,7 @@
       document.getElementById('block-date-to').value = '';
       document.getElementById('block-time-from').value = '';
       document.getElementById('block-time-to').value = '';
+      document.getElementById('block-slot-duration').value = '30';
       for (let i = 1; i <= 7; i++) {
         const cb = document.getElementById(`block-day-${i}`);
         if (cb) cb.checked = false;

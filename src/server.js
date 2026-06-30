@@ -791,7 +791,18 @@ app.post('/api/bookings', async (req, res) => {
     const startMs = new Date(startIso).getTime();
     if (isNaN(startMs)) return res.status(400).json({ error: 'Invalid date' });
 
-    const slotMinutes = vet.slot_minutes || 30; // Default 30 minutos si no está definido
+    // Obtener duración del bloque de disponibilidad específico
+    const slots = await db.getAvailableSlotsForBooking(vet.id, startMs - 60000, startMs + 3600000);
+    let slotMinutes = 30; // Default
+
+    // Buscar el bloque que contiene este slot
+    for (const slot of slots) {
+      if (slot.start_ms === startMs) {
+        slotMinutes = slot.duration_minutes || 30;
+        break;
+      }
+    }
+
     const endMs = startMs + slotMinutes * 60 * 1000;
     console.log(`📅 [BOOKING] Slot: ${slotMinutes}min, endMs: ${endMs}`);
 
