@@ -1069,8 +1069,15 @@ app.post('/api/admin/vets/:vetId/time-blocks', requireAuth, async (req, res) => 
     const nowLocal = DateTime.now().setZone(tz);
     const bufferMin = nowLocal.plus({ minutes: 2 });
 
+    console.log(`⏰ [TIME-BLOCK] Recibido:`);
+    console.log(`   startMs (UTC): ${startMs} = ${new Date(startMs).toISOString()}`);
+    console.log(`   startLocal (${tz}): ${startLocal.toISO()}`);
+    console.log(`   nowLocal (${tz}): ${nowLocal.toISO()}`);
+    console.log(`   bufferMin (${tz}): ${bufferMin.toISO()}`);
+    console.log(`   ¿Es futuro? ${startLocal >= bufferMin}`);
+
     if (startLocal < bufferMin) {
-      console.warn(`⏰ Hora muy pronto: ${startLocal.toISO()} < ${bufferMin.toISO()}`);
+      console.warn(`❌ Hora muy pronto: ${startLocal.toISO()} < ${bufferMin.toISO()}`);
       return res.status(400).json({ error: 'Start time must be at least 2 minutes in the future' });
     }
 
