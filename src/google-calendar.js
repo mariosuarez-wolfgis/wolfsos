@@ -92,8 +92,18 @@ async function createCalendarEvent(eventData) {
     });
   }
 
-  // Generar Meet link usando primeros 11 caracteres del appointmentId (más confiable)
-  const roomId = appointmentId.replace(/-/g, '').substring(0, 11).toLowerCase();
+  // Generar Meet room code en formato correcto: xxx-yyy-zzz (solo letras)
+  // Convertir appointmentId hex a código de sala (cada char hex -> letra a-p)
+  const hexId = appointmentId.replace(/-/g, '');
+  const letters = 'abcdefghijklmnop';
+  let roomCode = '';
+  for (let i = 0; i < 9 && i < hexId.length; i++) {
+    const hexChar = hexId[i];
+    const charCode = parseInt(hexChar, 16);
+    roomCode += letters[charCode % 16];
+  }
+  // Formato: xxx-yyy-zzz
+  const roomId = `${roomCode.substring(0, 3)}-${roomCode.substring(3, 6)}-${roomCode.substring(6, 9)}`;
   const meetLink = `https://meet.google.com/${roomId}`;
 
   // Construir evento SIN conferencia (más confiable)
