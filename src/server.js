@@ -743,44 +743,16 @@ app.post('/api/bookings', async (req, res) => {
         { locale: 'es' }
       );
 
-      // Retornar inmediatamente al cliente (sin esperar Google Calendar)
+      // Retornar inmediatamente al cliente (simple y rápido)
       res.status(201).json({
         id: appointment.id,
         vet: vet.name,
         whenLocal,
         timezone: tz,
         modality: appointment.modality,
-        meetLink: null, // Se actualizará cuando Google Calendar esté listo
         whatsappLink: buildWhatsappLink(appointment, vet),
         icsUrl: `/api/bookings/${appointment.id}/ics`,
       });
-
-      // Crear evento en Google Calendar de forma ASÍNCRONA (no bloquea la respuesta)
-      if (vet.google_access_token) {
-        try {
-          const calResult = await googleAuth.createCalendarEvent(vet.id, appointment, vet);
-          if (calResult.eventId) {
-            await db.updateAppointmentGoogleData(appointment.id, calResult.eventId, calResult.meetLink);
-            console.log(`✅ Google Calendar event creado: ${calResult.eventId}`);
-          }
-        } catch (err) {
-          console.error(`⚠️  Error creando Google Calendar event:`, err.message);
-          // No fallar la cita si Google Calendar falla
-        }
-      }
-
-      // Enviar confirmación por email de forma ASÍNCRONA
-      try {
-        const emailService = require('./email-service');
-        await emailService.sendAppointmentConfirmationToTutor(
-          tutorName, // Nota: tutorName es el nombre, no email - necesitaría email real
-          tutorWhatsapp,
-          vet.name,
-          whenLocal
-        );
-      } catch (err) {
-        console.error(`⚠️  Error enviando email:`, err.message);
-      }
     } catch (err) {
       if (err.code === 'UNIQUE_VIOLATION') {
         return res.status(409).json({ error: 'Slot already booked' });
