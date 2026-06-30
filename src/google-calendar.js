@@ -92,7 +92,10 @@ async function createCalendarEvent(eventData) {
     });
   }
 
-  // Construir evento CON conferencia desde el inicio
+  // Generar Meet link manualmente usando appointmentId como sala
+  const meetLink = `https://meet.google.com/${appointmentId.replace(/-/g, '')}`;
+
+  // Construir evento SIN conferencia (más confiable)
   const event = {
     summary: `🐾 Consulta Veterinaria - ${animalName}`,
     description: `
@@ -104,19 +107,12 @@ Consulta veterinaria para ${animalName}
 - Veterinario: ${vetName}
 ${description ? `- Notas: ${description}` : ''}
 
-El enlace de Google Meet estará disponible en la invitación de calendario.
+🔗 Enlace de Google Meet:
+${meetLink}
     `.trim(),
     start: { dateTime: startDate, timeZone: vetTimezone },
     end: { dateTime: endDate, timeZone: vetTimezone },
     attendees: attendees,
-    conferenceData: {
-      createRequest: {
-        requestId: uuidv4(),
-        conferenceSolutionKey: {
-          key: 'hangoutsMeet',
-        },
-      },
-    },
     reminders: {
       useDefault: false,
       overrides: [
@@ -127,8 +123,8 @@ El enlace de Google Meet estará disponible en la invitación de calendario.
   };
 
   try {
-    // Crear evento CON conferencia en el POST inicial
-    const createRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1', {
+    // Crear evento en el calendario
+    const createRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -144,20 +140,7 @@ El enlace de Google Meet estará disponible en la invitación de calendario.
 
     const createdEvent = await createRes.json();
     console.log(`✅ [GOOGLE CALENDAR] Evento creado: ${createdEvent.id}`);
-
-    // Extraer Meet link de la respuesta
-    let meetLink = null;
-    if (createdEvent.conferenceData && createdEvent.conferenceData.entryPoints) {
-      const meetEntry = createdEvent.conferenceData.entryPoints.find(ep => ep.entryPointType === 'video');
-      if (meetEntry) {
-        meetLink = meetEntry.uri;
-        console.log(`✅ [GOOGLE CALENDAR] Meet link generado: ${meetLink}`);
-      }
-    }
-
-    if (!meetLink) {
-      console.warn(`⚠️  [GOOGLE CALENDAR] No se pudo generar Meet link en la respuesta`);
-    }
+    console.log(`✅ [GOOGLE CALENDAR] Meet link: ${meetLink}`);
 
     return {
       eventId: createdEvent.id,
