@@ -517,6 +517,16 @@
         tab.classList.toggle('done', i < n);
       }
     });
+
+    // Cuando se navega al paso 3, habilitar el botón de submit
+    if (n === 3) {
+      const submitBtn = document.querySelector('#step3 button[type=submit]');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Confirmar cita ✓';
+        console.log('✅ Botón de submit habilitado para paso 3');
+      }
+    }
   }
 
   function modalityLabel(m) {
