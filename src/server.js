@@ -219,6 +219,7 @@ app.post('/api/vets/login-password', async (req, res) => {
         id: vet.id,
         email: vet.email,
         name: vet.name,
+        timezone: vet.timezone || 'America/Caracas',
       }
     });
   } catch (err) {
@@ -1051,7 +1052,7 @@ app.get('/api/admin/vets/:vetId/time-blocks', async (req, res) => {
 app.post('/api/admin/vets/:vetId/time-blocks', requireAuth, async (req, res) => {
   try {
     const { vetId } = req.params;
-    const { startMs, endMs, durationMinutes, recurringDays, recurringEndDate } = req.body;
+    const { startMs, endMs, durationMinutes, recurringDays, recurringEndDate, vetTimezone } = req.body;
 
     // Verificar que sea el mismo vet o admin
     if (req.vetId && req.vetId !== vetId) {
@@ -1062,10 +1063,14 @@ app.post('/api/admin/vets/:vetId/time-blocks', requireAuth, async (req, res) => 
       return res.status(400).json({ error: 'startMs and endMs required' });
     }
 
-    // Validar que sea futuro
-    const now = Date.now();
-    if (startMs <= now) {
-      return res.status(400).json({ error: 'Start time must be in the future' });
+    // Validar que sea futuro EN LA ZONA HORARIA DEL VET
+    const tz = vetTimezone || 'America/Caracas';
+    const startLocal = DateTime.fromMillis(startMs, { zone: tz });
+    const nowLocal = DateTime.now().setZone(tz);
+
+    if (startLocal <= nowLocal) {
+      console.warn(`⏰ Hora en el pasado: ${startLocal.toISO()} <= ${nowLocal.toISO()}`);
+      return res.status(400).json({ error: 'Start time must be in the future (in your timezone)' });
     }
 
     if (startMs >= endMs) {

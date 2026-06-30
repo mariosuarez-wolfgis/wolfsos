@@ -367,6 +367,7 @@
   let authToken = '';
   let vetId = '';
   let vetName = '';
+  let vetTimezone = 'America/Caracas';
   let isAdmin = false;
 
   // Recuperar sesión guardada al cargar la página
@@ -375,11 +376,13 @@
     let savedToken = localStorage.getItem('vetToken');
     let savedVetId = localStorage.getItem('vetId');
     let savedVetName = localStorage.getItem('vetName');
+    let savedVetTimezone = localStorage.getItem('vetTimezone');
 
     if (savedToken && savedVetId && savedVetName) {
       authToken = savedToken;
       vetId = savedVetId;
       vetName = savedVetName;
+      vetTimezone = savedVetTimezone || 'America/Caracas';
       isAdmin = false;
 
       document.getElementById('login-screen').style.display = 'none';
@@ -452,11 +455,13 @@
       authToken = data.token;
       vetId = data.vet.id;
       vetName = data.vet.name;
+      vetTimezone = data.vet.timezone || 'America/Caracas';
 
       // Guardar en localStorage
       localStorage.setItem('vetToken', authToken);
       localStorage.setItem('vetId', vetId);
       localStorage.setItem('vetName', vetName);
+      localStorage.setItem('vetTimezone', vetTimezone);
 
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('main-panel').style.display = 'block';
@@ -701,7 +706,8 @@
           endMs: blockEnd.getTime(),
           durationMinutes: 30,
           recurringDays: selectedDays,
-          recurringEndDate: dateTo.getTime()
+          recurringEndDate: dateTo.getTime(),
+          vetTimezone: vetTimezone
         })
       });
 
