@@ -92,8 +92,9 @@ async function createCalendarEvent(eventData) {
     });
   }
 
-  // Generar Meet link manualmente usando appointmentId como sala
-  const meetLink = `https://meet.google.com/${appointmentId.replace(/-/g, '')}`;
+  // Generar Meet link usando primeros 11 caracteres del appointmentId (más confiable)
+  const roomId = appointmentId.replace(/-/g, '').substring(0, 11).toLowerCase();
+  const meetLink = `https://meet.google.com/${roomId}`;
 
   // Construir evento SIN conferencia (más confiable)
   const event = {
