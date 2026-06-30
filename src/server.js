@@ -855,6 +855,7 @@ app.post('/api/bookings', async (req, res) => {
           console.log(`📅 [GOOGLE CALENDAR] Creando evento para cita ${appointment.id}...`);
 
           const calendarEvent = await googleCalendar.createCalendarEvent({
+            appointmentId: appointment.id,
             vetEmail: vet.email,
             vetName: vet.name,
             tutorEmail: tutorEmail || null,

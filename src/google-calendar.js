@@ -63,6 +63,7 @@ async function createCalendarEvent(eventData) {
     endMs,
     modality,
     description,
+    appointmentId, // ID único de la cita para requestId
   } = eventData;
 
   // Formatear fechas para Google Calendar (ISO 8601)
@@ -113,7 +114,7 @@ El enlace de Google Meet estará disponible en la invitación de calendario.
     },
     conferenceData: {
       createRequest: {
-        requestId: uuidv4(), // ID único requerido por Google
+        requestId: appointmentId || uuidv4(), // Usar ID de cita como requestId
         conferenceSolutionKey: {
           key: 'hangoutsMeet', // Google Meet
         },
