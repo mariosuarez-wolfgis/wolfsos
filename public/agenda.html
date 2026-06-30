@@ -454,16 +454,37 @@
   });
 
   function showConfirmation(data) {
-    goTo(4);
-    document.getElementById('confirm-text').innerHTML =
-      `<strong>${data.vet}</strong><br>` +
-      `📅 ${data.whenLocal} (hora Venezuela)<br>` +
-      `📱 Modalidad: ${modalityLabel(data.modality)}`;
+    console.log('🎉 showConfirmation() called con:', data);
+    try {
+      goTo(4);
+      console.log('✅ goTo(4) ejecutado');
 
-    document.getElementById('btn-wa').onclick = () => window.open(data.whatsappLink, '_blank');
-    const icsLink = document.getElementById('btn-ics');
-    icsLink.href = API + data.icsUrl;
-    icsLink.setAttribute('download', `cita-${data.id}.ics`);
+      const confirmText = document.getElementById('confirm-text');
+      if (!confirmText) {
+        console.error('❌ confirm-text element no encontrado');
+        return;
+      }
+
+      confirmText.innerHTML =
+        `<strong>${data.vet}</strong><br>` +
+        `📅 ${data.whenLocal} (hora Venezuela)<br>` +
+        `📱 Modalidad: ${modalityLabel(data.modality)}`;
+      console.log('✅ confirm-text actualizado');
+
+      const btnWa = document.getElementById('btn-wa');
+      if (btnWa) {
+        btnWa.onclick = () => window.open(data.whatsappLink, '_blank');
+      }
+
+      const icsLink = document.getElementById('btn-ics');
+      if (icsLink) {
+        icsLink.href = API + data.icsUrl;
+        icsLink.setAttribute('download', `cita-${data.id}.ics`);
+      }
+      console.log('✅ Botones configurados');
+    } catch (err) {
+      console.error('❌ Error en showConfirmation:', err);
+    }
   }
 
   document.getElementById('btn-new').addEventListener('click', () => {
