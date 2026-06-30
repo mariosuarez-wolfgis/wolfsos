@@ -398,11 +398,12 @@
     const symptoms = document.getElementById('f-symptoms').value.trim();
 
     if (!tutorName || !tutorWhatsapp || !animalName || !species || !modality) {
-      showError('form-error', 'Por favor completa todos los campos obligatorios (*).');
+      showError('form-error', 'Por favor completa TODOS los campos obligatorios (*): nombre, WhatsApp, animal, especie y modalidad.');
       return;
     }
 
     const btn = e.target.querySelector('[type=submit]');
+    const originalText = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Reservando…';
 
@@ -448,7 +449,7 @@
         : (err.message || 'Error al reservar. Intenta de nuevo.');
       showError('form-error', message);
       btn.disabled = false;
-      btn.textContent = 'Confirmar cita ✓';
+      btn.textContent = originalText;
     }
   });
 
