@@ -7,6 +7,7 @@ const path = require('node:path');
 const jwt = require('jsonwebtoken');
 const db = require('./db');
 const adminService = require('./admin-service');
+const emailService = require('./email-service');
 const { generateSlots } = require('./slots');
 const { buildIcs, buildWhatsappLink } = require('./format');
 const { DateTime } = require('luxon');
@@ -767,7 +768,7 @@ app.post('/api/triage', async (req, res) => {
 
 app.post('/api/bookings', async (req, res) => {
   try {
-    const { vetId, startIso, modality, tutorName, tutorWhatsapp, animalName, species, urgency, symptoms, triageFormId } = req.body;
+    const { vetId, startIso, modality, tutorName, tutorWhatsapp, tutorEmail, animalName, species, urgency, symptoms, triageFormId } = req.body;
 
     if (!vetId || !startIso || !modality || !tutorName || !tutorWhatsapp || !animalName || !species) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -802,6 +803,7 @@ app.post('/api/bookings', async (req, res) => {
         modality,
         tutorName,
         tutorWhatsapp,
+        tutorEmail: tutorEmail || null,
         animalName,
         species,
         urgency: urgency || '',
@@ -1119,6 +1121,13 @@ app.post('/api/admin/invite', requireAdmin, async (req, res) => {
       name,
       whatsapp,
     });
+
+    try {
+      await emailService.sendVetInvitationEmail(result.email, result.invitationUrl, result.token);
+    } catch (emailErr) {
+      console.error(`⚠️  No se pudo enviar el correo de invitación a ${result.email}:`, emailErr.message);
+    }
+
     res.status(201).json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });

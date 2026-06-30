@@ -254,6 +254,7 @@ async function insertAppointment(data) {
     modality: data.modality,
     tutor_name: data.tutorName,
     tutor_whatsapp: data.tutorWhatsapp,
+    tutor_email: data.tutorEmail || null,
     animal_name: data.animalName,
     species: data.species,
     urgency: data.urgency || null,

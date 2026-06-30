@@ -200,6 +200,9 @@
       <label><span>Tu WhatsApp *</span>
         <input type="tel" id="f-wa" placeholder="+584141234567" required>
       </label>
+      <label><span>Tu email (opcional, para recibir el link de la consulta)</span>
+        <input type="email" id="f-email" placeholder="tucorreo@ejemplo.com">
+      </label>
       <div class="row2">
         <label><span>Nombre del animal *</span>
           <input type="text" id="f-animal" placeholder="Toby" required>
@@ -395,6 +398,7 @@
 
     const tutorName = document.getElementById('f-name').value.trim();
     const tutorWhatsapp = document.getElementById('f-wa').value.trim();
+    const tutorEmail = document.getElementById('f-email').value.trim();
     const animalName = document.getElementById('f-animal').value.trim();
     const species = document.getElementById('f-species').value;
     const modality = document.getElementById('f-modality').value;
@@ -428,7 +432,7 @@
         body: JSON.stringify({
           vetId: selectedVet.id,
           startIso: selectedSlot.startIso,
-          modality, tutorName, tutorWhatsapp, animalName, species, urgency, symptoms,
+          modality, tutorName, tutorWhatsapp, tutorEmail, animalName, species, urgency, symptoms,
         }),
         signal: controller.signal,
       });
