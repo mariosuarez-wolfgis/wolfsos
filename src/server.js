@@ -4,12 +4,62 @@ require('dotenv').config();
 
 const express = require('express');
 const path = require('node:path');
+const jwt = require('jsonwebtoken');
 const db = require('./db');
-const googleAuth = require('./google-auth');
 const adminService = require('./admin-service');
 const { generateSlots } = require('./slots');
 const { buildIcs, buildWhatsappLink } = require('./format');
 const { DateTime } = require('luxon');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+
+// ============================================
+// MIDDLEWARES DE AUTENTICACIÓN
+// ============================================
+
+function verifyToken(token) {
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
+function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token requerido' });
+  }
+
+  const token = authHeader.slice(7);
+  const payload = verifyToken(token);
+
+  if (!payload) {
+    return res.status(401).json({ error: 'Token inválido o expirado' });
+  }
+
+  req.vetId = payload.vetId || null;
+  req.adminId = payload.adminId || null;
+  req.email = payload.email;
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token requerido' });
+  }
+
+  const token = authHeader.slice(7);
+  const payload = verifyToken(token);
+
+  if (!payload || !payload.adminId) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  req.adminId = payload.adminId;
+  next();
+}
 
 const PORT = process.env.PORT || 3000;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
