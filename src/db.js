@@ -166,24 +166,34 @@ async function getAvailableSlotsForBooking(vetId, fromMs, toMs) {
     if (block.recurring_type === 'weekly') {
       const recurringDays = JSON.parse(block.recurring_days || '[]');
       const endDate = Math.min(block.recurring_end_date || toMs, toMs);
-
       const blockDuration = block.end_ms - block.start_ms;
-      const baseDateMidnight = new Date(block.start_ms);
-      baseDateMidnight.setHours(0, 0, 0, 0);
-      const baseTime = block.start_ms - baseDateMidnight.getTime();
+
+      // Usar Luxon para obtener la hora correcta en UTC
+      // block.start_ms ya está en UTC, así que obtener la hora del día en UTC
+      const startDt = DateTime.fromMillis(block.start_ms, { zone: 'UTC' });
+      const hoursOfDay = startDt.hour;
+      const minutesOfDay = startDt.minute;
+      const secondsOfDay = startDt.second;
 
       for (let d = new Date(fromMs); d <= new Date(endDate); d.setDate(d.getDate() + 1)) {
         const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay();
         if (!recurringDays.includes(dayOfWeek)) continue;
 
-        const blockStart = new Date(d).getTime() + baseTime;
-        const blockEnd = blockStart + blockDuration;
+        // Crear la fecha a medianoche UTC, luego agregar las horas
+        const dayDt = DateTime.fromMillis(d.getTime(), { zone: 'UTC' }).startOf('day');
+        const blockStartDt = dayDt.set({
+          hour: hoursOfDay,
+          minute: minutesOfDay,
+          second: secondsOfDay
+        });
+        const blockStartMs = blockStartDt.toMillis();
+        const blockEndMs = blockStartMs + blockDuration;
 
-        if (blockEnd >= fromMs && blockStart <= toMs) {
+        if (blockEndMs >= fromMs && blockStartMs <= toMs) {
           expandedBlocks.push({
             ...block,
-            start_ms: blockStart,
-            end_ms: blockEnd,
+            start_ms: blockStartMs,
+            end_ms: blockEndMs,
             _is_expanded: true,
           });
         }
