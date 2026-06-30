@@ -324,7 +324,14 @@
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('visible'));
       tab.classList.add('active');
       document.getElementById(tab.dataset.tab).classList.add('visible');
-      if (tab.dataset.tab === 'tab-appts') loadAppts();
+
+      // Cargar y auto-refresh citas si se abre el tab
+      if (tab.dataset.tab === 'tab-appts') {
+        loadAppts();
+        startApptsAutoRefresh();
+      } else {
+        stopApptsAutoRefresh();
+      }
     });
   });
 
@@ -494,6 +501,8 @@
   });
 
   // --- CITAS ---
+  let apptsRefreshInterval = null;
+
   async function loadAppts() {
     const list = document.getElementById('appt-list');
     list.innerHTML = '<div class="loading">Cargando citas…</div>';
@@ -525,6 +534,24 @@
       });
     } catch (e) {
       list.innerHTML = '<div class="loading">Error al cargar citas.</div>';
+    }
+  }
+
+  // Auto-refresh de citas cada 30 segundos cuando el tab está visible
+  function startApptsAutoRefresh() {
+    if (apptsRefreshInterval) clearInterval(apptsRefreshInterval);
+    apptsRefreshInterval = setInterval(() => {
+      // Solo refresh si el tab de citas está visible
+      if (document.getElementById('tab-appts').classList.contains('visible')) {
+        loadAppts();
+      }
+    }, 30000); // Cada 30 segundos
+  }
+
+  function stopApptsAutoRefresh() {
+    if (apptsRefreshInterval) {
+      clearInterval(apptsRefreshInterval);
+      apptsRefreshInterval = null;
     }
   }
 
