@@ -175,7 +175,9 @@ async function getAvailableSlotsForBooking(vetId, fromMs, toMs) {
       const minutesOfDay = startDt.minute;
       const secondsOfDay = startDt.second;
 
-      for (let d = new Date(fromMs); d <= new Date(endDate); d.setDate(d.getDate() + 1)) {
+      // Comenzar desde el bloque original, no desde "ahora"
+      const loopStartMs = Math.max(block.start_ms, fromMs);
+      for (let d = new Date(loopStartMs); d.getTime() <= endDate; d.setDate(d.getDate() + 1)) {
         const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay();
         if (!recurringDays.includes(dayOfWeek)) continue;
 
