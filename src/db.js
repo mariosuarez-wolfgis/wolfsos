@@ -524,14 +524,14 @@ async function getAllAppointmentStats(fromMs = null, toMs = null) {
 
 async function getAllVetsStats(fromMs = null, toMs = null) {
   const vets = await listVets();
-  const stats = {};
+  const stats = [];
 
   for (const vet of vets) {
-    stats[vet.id] = {
+    stats.push({
       vetName: vet.name,
       vetEmail: vet.email,
       ...(await getVetAppointmentStats(vet.id, fromMs, toMs))
-    };
+    });
   }
 
   return stats;
