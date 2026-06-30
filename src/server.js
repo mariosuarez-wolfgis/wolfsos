@@ -836,7 +836,7 @@ app.get('/api/bookings/:id/ics', async (req, res) => {
 
 // Endpoints viejos eliminados - usar los nuevos abajo con formato correcto
 
-app.get('/api/admin/vets/:vetId/appointments', googleAuth.requireAuth, async (req, res) => {
+app.get('/api/admin/vets/:vetId/appointments', requireAuth, async (req, res) => {
   try {
     if (req.vetId !== req.params.vetId) {
       return res.status(403).json({ error: 'Unauthorized' });
@@ -892,7 +892,7 @@ app.get('/api/admin/vets/:vetId/time-blocks', async (req, res) => {
   }
 });
 
-app.post('/api/admin/vets/:vetId/time-blocks', googleAuth.requireAuth, async (req, res) => {
+app.post('/api/admin/vets/:vetId/time-blocks', requireAuth, async (req, res) => {
   try {
     const { vetId } = req.params;
     const { startMs, endMs, durationMinutes } = req.body;
@@ -939,7 +939,7 @@ app.post('/api/admin/vets/:vetId/time-blocks', googleAuth.requireAuth, async (re
   }
 });
 
-app.delete('/api/admin/vets/:vetId/time-blocks/:blockId', googleAuth.requireAuth, async (req, res) => {
+app.delete('/api/admin/vets/:vetId/time-blocks/:blockId', requireAuth, async (req, res) => {
   try {
     const { vetId, blockId } = req.params;
 
@@ -962,7 +962,7 @@ app.delete('/api/admin/vets/:vetId/time-blocks/:blockId', googleAuth.requireAuth
 // VET AVAILABILITY (Horario semanal - legacy)
 // ============================================
 
-app.get('/api/admin/vets/:vetId/availability', googleAuth.requireAuth, async (req, res) => {
+app.get('/api/admin/vets/:vetId/availability', requireAuth, async (req, res) => {
   try {
     const { vetId } = req.params;
 
@@ -978,7 +978,7 @@ app.get('/api/admin/vets/:vetId/availability', googleAuth.requireAuth, async (re
   }
 });
 
-app.put('/api/admin/vets/:vetId/availability', googleAuth.requireAuth, async (req, res) => {
+app.put('/api/admin/vets/:vetId/availability', requireAuth, async (req, res) => {
   try {
     const { vetId } = req.params;
     const { rules } = req.body;
@@ -1003,7 +1003,7 @@ app.put('/api/admin/vets/:vetId/availability', googleAuth.requireAuth, async (re
 // ADMIN ROUTES (Protegidas)
 // ============================================
 
-app.post('/api/admin/invite', googleAuth.requireAdmin, async (req, res) => {
+app.post('/api/admin/invite', requireAdmin, async (req, res) => {
   try {
     const { email, name, whatsapp } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
@@ -1021,7 +1021,7 @@ app.post('/api/admin/invite', googleAuth.requireAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/admin/stats', googleAuth.requireAdmin, async (req, res) => {
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {
     const stats = await adminService.getAdminStats();
     res.json(stats);
@@ -1030,7 +1030,7 @@ app.get('/api/admin/stats', googleAuth.requireAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/admin/vets', googleAuth.requireAdmin, async (req, res) => {
+app.get('/api/admin/vets', requireAdmin, async (req, res) => {
   try {
     const vets = await adminService.listVetersAdmin(req.adminId);
     res.json(vets.map(v => ({
@@ -1047,7 +1047,7 @@ app.get('/api/admin/vets', googleAuth.requireAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/admin/appointments', googleAuth.requireAdmin, async (req, res) => {
+app.get('/api/admin/appointments', requireAdmin, async (req, res) => {
   try {
     // Para admin, mostrar TODAS las citas
     const { data, error } = await db.supabase
