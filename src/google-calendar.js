@@ -3,6 +3,7 @@
 const { google } = require('googleapis');
 const { DateTime } = require('luxon');
 const db = require('./db');
+const googleMeet = require('./google-meet');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -22,7 +23,7 @@ function createAuthClient(refreshToken) {
   return auth;
 }
 
-// Crear evento en Google Calendar CON Google Meet (usando token del doctor)
+// Crear evento en Google Calendar CON Google Meet (usando Meet API)
 async function createCalendarEvent(eventData) {
   const {
     vetId,
@@ -76,15 +77,17 @@ async function createCalendarEvent(eventData) {
     });
   }
 
-  // Generar Meet link manual (formato: xxx-yyy-zzz con caracteres del UUID)
-  const uuidNoGuiones = appointmentId.replace(/-/g, '');
-  const meetLink = `https://meet.google.com/${uuidNoGuiones.substring(0, 3)}-${uuidNoGuiones.substring(3, 6)}-${uuidNoGuiones.substring(6, 9)}`;
+  try {
+    // Crear espacio de reunión en Google Meet API
+    const meetSpace = await googleMeet.createMeetingSpace();
+    const meetLink = meetSpace.meetLink;
 
-  // Construir evento SIN conferencia automática (Google no la permite)
-  // Pero incluir Meet link manual en la descripción
-  const eventBody = {
-    summary: `🐾 Consulta Veterinaria - ${animalName}`,
-    description: `
+    console.log(`📅 [GOOGLE CALENDAR] Creando evento para cita ${appointmentId}...`);
+
+    // Construir evento con Meet link de Google Meet API
+    const eventBody = {
+      summary: `🐾 Consulta Veterinaria - ${animalName}`,
+      description: `
 Consulta veterinaria para ${animalName}
 
 📋 Datos de la cita:
@@ -94,29 +97,24 @@ Consulta veterinaria para ${animalName}
 ${description ? `- Notas: ${description}` : ''}
 
 🔗 Google Meet: ${meetLink}
-    `.trim(),
-    start: {
-      dateTime: startDt.toISO(),
-      timeZone: vetTimezone,
-    },
-    end: {
-      dateTime: endDt.toISO(),
-      timeZone: vetTimezone,
-    },
-    attendees: attendees,
-    reminders: {
-      useDefault: false,
-      overrides: [
-        { method: 'email', minutes: 60 },
-        { method: 'email', minutes: 15 },
-      ],
-    },
-  };
-
-  try {
-    console.log(
-      `📅 [GOOGLE CALENDAR] Creando evento para cita ${appointmentId} (doctor: ${vet.email})...`
-    );
+      `.trim(),
+      start: {
+        dateTime: startDt.toISO(),
+        timeZone: vetTimezone,
+      },
+      end: {
+        dateTime: endDt.toISO(),
+        timeZone: vetTimezone,
+      },
+      attendees: attendees,
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'email', minutes: 60 },
+          { method: 'email', minutes: 15 },
+        ],
+      },
+    };
 
     const response = await calendar.events.insert({
       calendarId: 'primary',
@@ -131,6 +129,7 @@ ${description ? `- Notas: ${description}` : ''}
       eventId: event.id,
       meetLink: meetLink,
       eventLink: event.htmlLink,
+      spaceId: meetSpace.spaceId,
     };
   } catch (err) {
     console.error('❌ Error creando evento en Calendar:', err.message);
