@@ -1197,7 +1197,7 @@ app.put('/api/admin/vets/:vetId/status', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Active debe ser true o false' });
     }
 
-    const { error } = await supabase
+    const { error } = await db.supabase
       .from('vets')
       .update({ active })
       .eq('id', vetId);
