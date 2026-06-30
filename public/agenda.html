@@ -386,6 +386,7 @@
 
   // --- Paso 3: Formulario ---
   document.getElementById('booking-form').addEventListener('submit', async e => {
+    console.log('🔥 SUBMIT EVENT FIRED - booking-form');
     e.preventDefault();
     hideError('form-error');
 
