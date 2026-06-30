@@ -135,23 +135,74 @@ async function getVetTimeBlocks(vetId, fromMs, toMs) {
     .from('vet_time_blocks')
     .select('*')
     .eq('vet_id', vetId)
-    .gte('end_ms', fromMs)
-    .lte('start_ms', toMs)
     .order('start_ms');
   if (error) throw error;
-  return data || [];
+
+  const blocks = data || [];
+  const expandedBlocks = [];
+
+  for (const block of blocks) {
+    // Si no es recurrente, incluir si está en rango
+    if (!block.recurring_type || block.recurring_type === 'none') {
+      if (block.end_ms >= fromMs && block.start_ms <= toMs) {
+        expandedBlocks.push(block);
+      }
+      continue;
+    }
+
+    // Si es recurrente (weekly), expandir para cada día
+    if (block.recurring_type === 'weekly') {
+      const recurringDays = JSON.parse(block.recurring_days || '[]');
+      const endDate = Math.min(block.recurring_end_date || toMs, toMs);
+
+      const blockDuration = block.end_ms - block.start_ms;
+      const baseDate = new Date(block.start_ms);
+      const baseTime = baseDate.getTime() - baseDate.setHours(0, 0, 0, 0);
+
+      for (let d = new Date(fromMs); d <= new Date(endDate); d.setDate(d.getDate() + 1)) {
+        const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay();
+        if (!recurringDays.includes(dayOfWeek)) continue;
+
+        const blockStart = new Date(d).getTime() + baseTime;
+        const blockEnd = blockStart + blockDuration;
+
+        if (blockEnd >= fromMs && blockStart <= toMs) {
+          expandedBlocks.push({
+            ...block,
+            start_ms: blockStart,
+            end_ms: blockEnd,
+            _is_expanded: true,
+          });
+        }
+      }
+    }
+  }
+
+  return expandedBlocks.sort((a, b) => a.start_ms - b.start_ms);
 }
 
-async function createTimeBlock(vetId, startMs, endMs, durationMinutes = 30) {
+async function createTimeBlock(vetId, startMs, endMs, durationMinutes = 30, recurringConfig = null) {
+  const insert = {
+    id: uuidv4(),
+    vet_id: vetId,
+    start_ms: startMs,
+    end_ms: endMs,
+    duration_minutes: durationMinutes,
+    recurring_type: 'none',
+    recurring_days: null,
+    recurring_end_date: null,
+  };
+
+  // Si hay configuración recurrente
+  if (recurringConfig && recurringConfig.recurringDays && recurringConfig.recurringDays.length > 0) {
+    insert.recurring_type = 'weekly';
+    insert.recurring_days = JSON.stringify(recurringConfig.recurringDays);
+    insert.recurring_end_date = recurringConfig.recurringEndDate;
+  }
+
   const { data, error } = await supabase
     .from('vet_time_blocks')
-    .insert([{
-      id: uuidv4(),
-      vet_id: vetId,
-      start_ms: startMs,
-      end_ms: endMs,
-      duration_minutes: durationMinutes,
-    }])
+    .insert([insert])
     .select()
     .single();
   if (error) throw error;

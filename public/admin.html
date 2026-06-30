@@ -642,23 +642,34 @@
       hideErr('sched-error');
       console.log(`📝 Creando ${blocks.length} bloques de disponibilidad...`);
 
-      // Crear cada bloque
-      for (const block of blocks) {
-        const res = await fetch(`${API}/api/admin/vets/${vetId}/time-blocks`, {
-          method: 'POST',
-          headers: authHeaders(),
-          body: JSON.stringify({ startMs: block.startMs, endMs: block.endMs, durationMinutes: 30 })
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          console.error(`❌ Error del servidor:`, err);
-          throw new Error(err.error || 'Error creando bloque');
-        }
-        const data = await res.json();
-        console.log(`✅ Bloque creado:`, data.block);
+      // Crear UN SOLO bloque recurrente con la configuración
+      const blockStart = new Date(dateFromVal);
+      blockStart.setHours(parseInt(timeFromHour), parseInt(timeFromMin), 0, 0);
+      const blockEnd = new Date(dateFromVal);
+      blockEnd.setHours(parseInt(timeToHour), parseInt(timeToMin), 0, 0);
+
+      const res = await fetch(`${API}/api/admin/vets/${vetId}/time-blocks`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          startMs: blockStart.getTime(),
+          endMs: blockEnd.getTime(),
+          durationMinutes: 30,
+          recurringDays: selectedDays,
+          recurringEndDate: dateTo.getTime()
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        console.error(`❌ Error del servidor:`, err);
+        throw new Error(err.error || 'Error creando bloque');
       }
 
-      showSuccessMsg('sched-success', `✓ ${blocks.length} bloques de disponibilidad agregados.`);
+      const data = await res.json();
+      console.log(`✅ Bloque recurrente creado:`, data.block);
+
+      showSuccessMsg('sched-success', `✓ Disponibilidad recurrente agregada (${selectedDays.length} días/semana).`);
       document.getElementById('block-date-from').value = '';
       document.getElementById('block-date-to').value = '';
       document.getElementById('block-time-from').value = '';

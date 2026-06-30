@@ -974,7 +974,7 @@ app.get('/api/admin/vets/:vetId/time-blocks', async (req, res) => {
 app.post('/api/admin/vets/:vetId/time-blocks', requireAuth, async (req, res) => {
   try {
     const { vetId } = req.params;
-    const { startMs, endMs, durationMinutes } = req.body;
+    const { startMs, endMs, durationMinutes, recurringDays, recurringEndDate } = req.body;
 
     // Verificar que sea el mismo vet o admin
     if (req.vetId && req.vetId !== vetId) {
@@ -995,21 +995,24 @@ app.post('/api/admin/vets/:vetId/time-blocks', requireAuth, async (req, res) => 
       return res.status(400).json({ error: 'End time must be after start time' });
     }
 
-    console.log(`⏱️  Creando bloque de tiempo para ${vetId}: ${new Date(startMs).toISOString()} - ${new Date(endMs).toISOString()}`);
+    const isRecurring = recurringDays && recurringDays.length > 0;
+    console.log(`⏱️  Creando bloque ${isRecurring ? 'RECURRENTE' : 'individual'} para ${vetId}`);
 
-    // Verificar que no haya bloques solapados
-    const existingBlocks = await db.getVetTimeBlocks(vetId, startMs - 86400000, endMs + 86400000);
-    const hasOverlap = existingBlocks.some(b => {
-      // Dos bloques se solapan si: inicio1 < fin2 Y fin1 > inicio2
-      return startMs < b.end_ms && endMs > b.start_ms;
-    });
+    // Verificar que no haya bloques solapados (solo para no recurrentes)
+    if (!isRecurring) {
+      const existingBlocks = await db.getVetTimeBlocks(vetId, startMs - 86400000, endMs + 86400000);
+      const hasOverlap = existingBlocks.some(b => {
+        return startMs < b.end_ms && endMs > b.start_ms;
+      });
 
-    if (hasOverlap) {
-      console.warn(`⚠️  Bloque solapado detectado para ${vetId}`);
-      return res.status(400).json({ error: 'Este bloque se solapa con otro existente. Ajusta los horarios.' });
+      if (hasOverlap) {
+        console.warn(`⚠️  Bloque solapado detectado para ${vetId}`);
+        return res.status(400).json({ error: 'Este bloque se solapa con otro existente. Ajusta los horarios.' });
+      }
     }
 
-    const block = await db.createTimeBlock(vetId, startMs, endMs, durationMinutes || 30);
+    const recurringConfig = isRecurring ? { recurringDays, recurringEndDate } : null;
+    const block = await db.createTimeBlock(vetId, startMs, endMs, durationMinutes || 30, recurringConfig);
     console.log(`✅ Bloque creado: ${block.id}`);
     res.status(201).json({ block });
   } catch (err) {
