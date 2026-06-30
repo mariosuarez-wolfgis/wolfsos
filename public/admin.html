@@ -550,44 +550,63 @@
     }
 
     list.innerHTML = futureBlocks.map(b => {
-      let displayText = '';
-      let description = '';
+      let content = '';
 
       if (b.recurring_type === 'weekly') {
-        // Mostrar patrón recurrente
+        // Mostrar patrón recurrente con diseño mejorado
         const days = JSON.parse(b.recurring_days || '[]');
         const dayNames = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab', 'Dom'];
         const dayStr = days.map(d => dayNames[d]).join(', ');
 
-        const start = new Date(b.start_ms);
-        const end = new Date(b.end_ms);
-        const startTime = start.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
-        const endTime = end.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
-        const untilDate = new Date(b.recurring_end_date).toLocaleDateString('es-VE');
+        const startDate = new Date(b.start_ms);
+        const endDate = new Date(b.end_ms);
+        const fromDate = new Date(b.start_ms).toLocaleDateString('es-VE');
+        const toDate = new Date(b.recurring_end_date).toLocaleDateString('es-VE');
+        const startTime = startDate.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+        const endTime = endDate.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
 
-        displayText = `<strong style="font-size: 0.95rem;">🔄 ${dayStr}</strong>`;
-        description = `<span style="color: #666; font-size: 0.85rem;">${startTime} - ${endTime} (hasta ${untilDate})</span>`;
+        content = `
+          <div style="background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border-left: 4px solid #4A90E2; padding: 16px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+              <div style="font-weight: 700; font-size: 1rem; color: #1b4332; margin-bottom: 8px;">
+                🔄 ${dayStr}
+              </div>
+              <div style="font-size: 0.9rem; color: #555; line-height: 1.6;">
+                <div>⏰ <strong>${startTime} - ${endTime}</strong></div>
+                <div>📅 ${fromDate} hasta ${toDate}</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-left: 12px;">
+              <button class="btn btn-sm" style="background: #4A90E2; color: white; cursor: not-allowed; opacity: 0.6;" title="Editar bloques recurrentes eliminando y recreando">✏️ Editar</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteTimeBlock('${b.id}')">🗑️ Eliminar</button>
+            </div>
+          </div>
+        `;
       } else {
         // Mostrar bloque individual
         const start = new Date(b.start_ms);
         const end = new Date(b.end_ms);
-        const startStr = start.toLocaleString('es-VE');
-        const endStr = end.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+        const startStr = start.toLocaleDateString('es-VE');
+        const startTime = start.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+        const endTime = end.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
 
-        displayText = `<strong style="font-size: 0.95rem;">${startStr}</strong>`;
-        description = `<span style="color: #666; font-size: 0.85rem;">Hasta ${endStr}</span>`;
+        content = `
+          <div style="background: linear-gradient(135deg, #f0f4f8 0%, #e8f5e9 100%); border-left: 4px solid #2d6a4f; padding: 16px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+              <div style="font-weight: 700; font-size: 1rem; color: #1b4332; margin-bottom: 8px;">
+                📅 ${startStr}
+              </div>
+              <div style="font-size: 0.9rem; color: #555;">
+                ⏰ ${startTime} - ${endTime}
+              </div>
+            </div>
+            <button class="btn btn-sm btn-danger" onclick="deleteTimeBlock('${b.id}')">🗑️ Eliminar</button>
+          </div>
+        `;
       }
 
-      return `
-        <div style="border: 1px solid #e0e0e0; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; background: #fafaf8;">
-          <div>
-            ${displayText}<br/>
-            ${description}
-          </div>
-          <button class="btn btn-sm btn-danger" onclick="deleteTimeBlock('${b.id}')">Eliminar</button>
-        </div>
-      `;
-    }).join('');
+      return content;
+    }).join('<div style="margin-bottom: 12px;"></div>');
   }
 
   async function deleteTimeBlock(blockId) {
