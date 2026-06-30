@@ -159,11 +159,15 @@ El enlace de Google Meet estará disponible en la invitación de calendario.
     });
 
     if (!updateRes.ok) {
-      console.warn(`⚠️  No se pudo agregar conferencia, pero el evento se creó`);
+      const updateErr = await updateRes.json();
+      console.warn(`⚠️  No se pudo agregar conferencia: ${updateErr.error?.message || JSON.stringify(updateErr)}`);
+    } else {
+      console.log(`✅ Conferencia agregada exitosamente`);
     }
 
     const updatedEvent = await updateRes.json();
     const meetLink = updatedEvent.conferenceData?.entryPoints?.[0]?.uri || null;
+    console.log(`📹 [GOOGLE CALENDAR] Meet link obtenido: ${meetLink || 'null'}`);
 
     return {
       eventId: createdEvent.id,
