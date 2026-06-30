@@ -669,6 +669,7 @@ module.exports = {
   deleteTimeBlock,
   // Appointments
   getBookedSlots,
+  getAvailableSlotsForBooking,
   insertAppointment,
   getAppointment,
   listAppointments,
