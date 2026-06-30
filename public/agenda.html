@@ -499,8 +499,13 @@
   });
 
   function goTo(n) {
+    console.log(`📍 goTo(${n}) - navegando a paso ${n}`);
     [1,2,3,4].forEach(i => {
-      document.getElementById(`step${i}`).classList.toggle('visible', i === n);
+      const step = document.getElementById(`step${i}`);
+      const shouldBeVisible = i === n;
+      step.classList.toggle('visible', shouldBeVisible);
+      console.log(`   step${i}: ${shouldBeVisible ? '✅ VISIBLE' : '❌ HIDDEN'}, clases: ${step.className}`);
+
       const tab = document.getElementById(`step${i}-tab`);
       if (tab) {
         tab.classList.toggle('active', i === n);
