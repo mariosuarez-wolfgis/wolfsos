@@ -354,22 +354,32 @@
       document.getElementById('main-panel').style.display = 'block';
       document.getElementById('header-name').textContent = '👑 Admin';
 
-      // Ocultar tabs de vet para admin
-      document.querySelector('[data-tab="tab-schedule"]').style.display = 'none';
-      document.querySelector('[data-tab="tab-timeoff"]').style.display = 'none';
-      document.querySelector('[data-tab="tab-appts"]').style.display = 'none';
+      // Ocultar TODOS los tabs de vet
+      document.querySelectorAll('[data-tab^="tab-schedule"], [data-tab^="tab-timeoff"], [data-tab^="tab-appts"]').forEach(btn => {
+        btn.style.display = 'none';
+      });
 
-      // Ocultar paneles de vet
-      document.getElementById('tab-schedule').style.display = 'none';
-      document.getElementById('tab-timeoff').style.display = 'none';
-      document.getElementById('tab-appts').style.display = 'none';
+      // Ocultar TODOS los paneles de vet y remover clase visible
+      ['tab-schedule', 'tab-timeoff', 'tab-appts'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.remove('visible');
+          el.style.display = 'none';
+        }
+      });
 
-      // Mostrar solo Analytics
-      document.getElementById('analytics-tab').style.display = 'block';
-      document.querySelector('[data-tab="tab-analytics"]').classList.add('active');
-      document.querySelector('[data-tab="tab-analytics"]').classList.remove('active');
-      document.querySelector('[data-tab="tab-analytics"]').classList.add('active');
-      document.getElementById('tab-analytics').classList.add('visible');
+      // Mostrar SOLO Analytics
+      const analyticsTab = document.querySelector('[data-tab="tab-analytics"]');
+      if (analyticsTab) {
+        analyticsTab.classList.add('active');
+        analyticsTab.style.display = 'block';
+      }
+
+      const analyticsPanel = document.getElementById('tab-analytics');
+      if (analyticsPanel) {
+        analyticsPanel.classList.add('visible');
+        analyticsPanel.style.display = 'block';
+      }
 
       initAnalyticsDatePickers();
       loadAnalytics();
