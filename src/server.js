@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const db = require('./db');
 const adminService = require('./admin-service');
 const emailService = require('./email-service');
+const googleCalendar = require('./google-calendar');
 const { generateSlots } = require('./slots');
 const { buildIcs, buildWhatsappLink } = require('./format');
 const { DateTime } = require('luxon');
@@ -834,6 +835,57 @@ app.post('/api/bookings', async (req, res) => {
         icsUrl: `/api/bookings/${appointment.id}/ics`,
       });
       console.log(`✅ [BOOKING] Respuesta enviada: ${appointment.id}`);
+
+      // ========================================
+      // Crear evento Google Calendar en background
+      // (no bloquea la respuesta al cliente)
+      // ========================================
+      (async () => {
+        try {
+          console.log(`📅 [GOOGLE CALENDAR] Creando evento para cita ${appointment.id}...`);
+
+          const calendarEvent = await googleCalendar.createCalendarEvent({
+            vetEmail: vet.email,
+            vetName: vet.name,
+            tutorEmail: tutorEmail || null,
+            tutorName: tutorName,
+            animalName: animalName,
+            startMs: startMs,
+            endMs: endMs,
+            modality: modality,
+            description: symptoms || '',
+          });
+
+          // Guardar IDs en la BD
+          await db.updateAppointmentGoogleData(
+            appointment.id,
+            calendarEvent.eventId,
+            calendarEvent.meetLink
+          );
+
+          console.log(`✅ [GOOGLE CALENDAR] Evento creado: ${calendarEvent.eventId}`);
+          console.log(`📹 [GOOGLE CALENDAR] Meet link: ${calendarEvent.meetLink}`);
+
+          // Enviar email de confirmación al tutor CON el Meet link
+          if (tutorEmail) {
+            try {
+              await emailService.sendAppointmentConfirmationToTutor(
+                tutorEmail,
+                tutorWhatsapp,
+                vet.name,
+                whenLocal,
+                calendarEvent.meetLink
+              );
+              console.log(`✉️  [EMAIL] Confirmación enviada a ${tutorEmail}`);
+            } catch (emailErr) {
+              console.error(`⚠️  [EMAIL] Error enviando confirmación a ${tutorEmail}:`, emailErr.message);
+            }
+          }
+        } catch (calendarErr) {
+          console.error(`❌ [GOOGLE CALENDAR] Error:`, calendarErr.message);
+          // No fallar la cita por error de Calendar — registrar y continuar
+        }
+      })();
     } catch (err) {
       if (err.code === 'UNIQUE_VIOLATION') {
         return res.status(409).json({ error: 'Slot already booked' });
