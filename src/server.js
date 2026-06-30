@@ -865,6 +865,7 @@ app.post('/api/bookings', async (req, res) => {
             endMs: endMs,
             modality: modality,
             description: symptoms || '',
+            vetTimezone: vet.timezone || 'America/Caracas',
           });
 
           // Guardar IDs en la BD

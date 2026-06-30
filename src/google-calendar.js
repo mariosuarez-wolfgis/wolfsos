@@ -63,12 +63,16 @@ async function createCalendarEvent(eventData) {
     endMs,
     modality,
     description,
-    appointmentId, // ID único de la cita para requestId
+    appointmentId,
+    vetTimezone = 'America/Caracas',
   } = eventData;
 
-  // Formatear fechas para Google Calendar (ISO 8601)
-  const startDate = new Date(startMs).toISOString();
-  const endDate = new Date(endMs).toISOString();
+  // Formatear fechas para Google Calendar usando la zona horaria del vet
+  const { DateTime } = require('luxon');
+  const startDt = DateTime.fromMillis(startMs, { zone: vetTimezone });
+  const endDt = DateTime.fromMillis(endMs, { zone: vetTimezone });
+  const startDate = startDt.toISO();
+  const endDate = endDt.toISO();
 
   // Construir lista de asistentes
   const attendees = [
@@ -102,8 +106,8 @@ ${description ? `- Notas: ${description}` : ''}
 
 El enlace de Google Meet estará disponible en la invitación de calendario.
     `.trim(),
-    start: { dateTime: startDate, timeZone: 'UTC' },
-    end: { dateTime: endDate, timeZone: 'UTC' },
+    start: { dateTime: startDate, timeZone: vetTimezone },
+    end: { dateTime: endDate, timeZone: vetTimezone },
     attendees: attendees,
     reminders: {
       useDefault: false,
