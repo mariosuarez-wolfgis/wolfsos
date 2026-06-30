@@ -76,8 +76,9 @@ async function createCalendarEvent(eventData) {
     });
   }
 
-  // Generar Meet link manual (más confiable que conferenceData automática)
-  const meetLink = `https://meet.google.com/${appointmentId.substring(0, 3)}-${appointmentId.substring(3, 6)}-${appointmentId.substring(6, 9)}`;
+  // Generar Meet link manual (formato: xxx-yyy-zzz con caracteres del UUID)
+  const uuidNoGuiones = appointmentId.replace(/-/g, '');
+  const meetLink = `https://meet.google.com/${uuidNoGuiones.substring(0, 3)}-${uuidNoGuiones.substring(3, 6)}-${uuidNoGuiones.substring(6, 9)}`;
 
   // Construir evento SIN conferencia automática (Google no la permite)
   // Pero incluir Meet link manual en la descripción
