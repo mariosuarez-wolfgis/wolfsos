@@ -670,8 +670,8 @@ app.get('/api/vets/:id/slots', async (req, res) => {
     const nowMs = Date.now();
     const toMs = nowMs + days * 86_400_000;
 
-    // Obtener bloques de tiempo del vet
-    const timeBlocks = await db.getVetTimeBlocks(vet.id, nowMs, toMs);
+    // Obtener bloques de tiempo del vet (expandidos para búsqueda)
+    const timeBlocks = await db.getAvailableSlotsForBooking(vet.id, nowMs, toMs);
     const booked = await db.getBookedSlots(vet.id, nowMs, toMs);
 
     // Generar slots desde bloques

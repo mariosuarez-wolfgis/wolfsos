@@ -130,7 +130,7 @@ async function createAdmin(email, name, picture) {
 
 // --- VET TIME BLOCKS (Bloques de horario flexibles) ---
 
-async function getVetTimeBlocks(vetId, fromMs, toMs) {
+async function getVetTimeBlocks(vetId, fromMs = null, toMs = null) {
   const { data, error } = await supabase
     .from('vet_time_blocks')
     .select('*')
@@ -138,7 +138,20 @@ async function getVetTimeBlocks(vetId, fromMs, toMs) {
     .order('start_ms');
   if (error) throw error;
 
-  const blocks = data || [];
+  // Retornar bloques SIN expandir (mostrar patrón original en UI)
+  return (data || []).filter(b => {
+    if (!fromMs || !toMs) return true;
+    // Filtrar si está en rango (para bloques no recurrentes)
+    if (!b.recurring_type || b.recurring_type === 'none') {
+      return b.end_ms >= fromMs && b.start_ms <= toMs;
+    }
+    return true; // Incluir bloques recurrentes siempre
+  });
+}
+
+// Nueva función: expandir bloques recurrentes solo para búsqueda de slots
+async function getAvailableSlotsForBooking(vetId, fromMs, toMs) {
+  const blocks = await getVetTimeBlocks(vetId);
   const expandedBlocks = [];
 
   for (const block of blocks) {

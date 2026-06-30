@@ -541,8 +541,8 @@
     const list = document.getElementById('blocks-list');
     const now = Date.now();
 
-    // Filtrar bloques futuros (solo mostrar horarios que no hayan pasado)
-    const futureBlocks = (blocks || []).filter(b => b.end_ms > now);
+    // Filtrar bloques futuros
+    const futureBlocks = (blocks || []).filter(b => b.end_ms > now || (b.recurring_type === 'weekly' && b.recurring_end_date > now));
 
     if (!futureBlocks || futureBlocks.length === 0) {
       list.innerHTML = '<p style="color: #999; font-size: 0.9rem;">No hay bloques de disponibilidad futuros.</p>';
@@ -550,18 +550,39 @@
     }
 
     list.innerHTML = futureBlocks.map(b => {
-      const start = new Date(b.start_ms);
-      const end = new Date(b.end_ms);
-      const startStr = start.toLocaleString('es-VE');
-      const endStr = end.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
-      const isPast = b.end_ms <= now;
-      const style = isPast ? 'opacity: 0.5; text-decoration: line-through;' : '';
+      let displayText = '';
+      let description = '';
+
+      if (b.recurring_type === 'weekly') {
+        // Mostrar patrón recurrente
+        const days = JSON.parse(b.recurring_days || '[]');
+        const dayNames = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab', 'Dom'];
+        const dayStr = days.map(d => dayNames[d]).join(', ');
+
+        const start = new Date(b.start_ms);
+        const end = new Date(b.end_ms);
+        const startTime = start.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+        const endTime = end.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+        const untilDate = new Date(b.recurring_end_date).toLocaleDateString('es-VE');
+
+        displayText = `<strong style="font-size: 0.95rem;">🔄 ${dayStr}</strong>`;
+        description = `<span style="color: #666; font-size: 0.85rem;">${startTime} - ${endTime} (hasta ${untilDate})</span>`;
+      } else {
+        // Mostrar bloque individual
+        const start = new Date(b.start_ms);
+        const end = new Date(b.end_ms);
+        const startStr = start.toLocaleString('es-VE');
+        const endStr = end.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+
+        displayText = `<strong style="font-size: 0.95rem;">${startStr}</strong>`;
+        description = `<span style="color: #666; font-size: 0.85rem;">Hasta ${endStr}</span>`;
+      }
 
       return `
-        <div style="border: 1px solid #e0e0e0; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; background: #fafaf8; ${style}">
+        <div style="border: 1px solid #e0e0e0; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; background: #fafaf8;">
           <div>
-            <strong style="font-size: 0.95rem;">${startStr}</strong><br/>
-            <span style="color: #666; font-size: 0.85rem;">Hasta ${endStr}</span>
+            ${displayText}<br/>
+            ${description}
           </div>
           <button class="btn btn-sm btn-danger" onclick="deleteTimeBlock('${b.id}')">Eliminar</button>
         </div>
