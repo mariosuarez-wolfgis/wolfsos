@@ -92,7 +92,7 @@ async function createCalendarEvent(eventData) {
     });
   }
 
-  // Construir evento
+  // Construir evento SIN conferencia primero
   const event = {
     summary: `🐾 Consulta Veterinaria - ${animalName}`,
     description: `
@@ -116,18 +116,11 @@ El enlace de Google Meet estará disponible en la invitación de calendario.
         { method: 'email', minutes: 15 },
       ],
     },
-    conferenceData: {
-      createRequest: {
-        requestId: appointmentId || uuidv4(), // Usar ID de cita como requestId
-        conferenceSolutionKey: {
-          key: 'hangoutsMeet', // Google Meet
-        },
-      },
-    },
   };
 
   try {
-    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1', {
+    // 1. Crear evento SIN conferencia
+    const createRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -136,16 +129,45 @@ El enlace de Google Meet estará disponible en la invitación de calendario.
       body: JSON.stringify(event),
     });
 
-    if (!res.ok) {
-      const err = await res.json();
+    if (!createRes.ok) {
+      const err = await createRes.json();
       throw new Error(`Google Calendar API error: ${err.error?.message || JSON.stringify(err)}`);
     }
 
-    const createdEvent = await res.json();
+    const createdEvent = await createRes.json();
+    console.log(`✅ [GOOGLE CALENDAR] Evento creado: ${createdEvent.id}`);
+
+    // 2. Actualizar evento AGREGANDO conferencia
+    const eventUpdate = {
+      conferenceData: {
+        createRequest: {
+          requestId: appointmentId,
+          conferenceSolutionKey: {
+            key: 'hangoutsMeet',
+          },
+        },
+      },
+    };
+
+    const updateRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${createdEvent.id}?conferenceDataVersion=1`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(eventUpdate),
+    });
+
+    if (!updateRes.ok) {
+      console.warn(`⚠️  No se pudo agregar conferencia, pero el evento se creó`);
+    }
+
+    const updatedEvent = await updateRes.json();
+    const meetLink = updatedEvent.conferenceData?.entryPoints?.[0]?.uri || null;
 
     return {
       eventId: createdEvent.id,
-      meetLink: createdEvent.conferenceData?.entryPoints?.[0]?.uri || null,
+      meetLink: meetLink,
       eventLink: createdEvent.htmlLink,
     };
   } catch (err) {
