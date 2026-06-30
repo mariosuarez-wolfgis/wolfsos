@@ -334,13 +334,19 @@
   async function loadTimeBlocks() {
     try {
       hideErr('sched-error');
+      console.log(`🔄 Cargando bloques para vet ${vetId}...`);
       const res = await fetch(`${API}/api/admin/vets/${vetId}/time-blocks`, {
         headers: authHeaders()
       });
-      if (!res.ok) throw new Error('Error cargando bloques');
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Error cargando bloques');
+      }
       const data = await res.json();
+      console.log(`✅ Bloques cargados:`, data.blocks);
       renderTimeBlocks(data.blocks);
     } catch (e) {
+      console.error(`❌ Error loading time blocks:`, e);
       showErr('sched-error', `Error cargando bloques: ${e.message}`);
     }
   }
@@ -407,6 +413,13 @@
     // Parsear fecha inicio
     const startDate = new Date(startVal);
     const startMs = startDate.getTime();
+    const now = Date.now();
+
+    // Validar que la fecha/hora sea futura (al menos 1 minuto en el futuro)
+    if (startMs <= now) {
+      showErr('sched-error', 'La fecha y hora debe ser presente o futura.');
+      return;
+    }
 
     // Parsear hora fin (usar la misma fecha que inicio)
     const [endHour, endMin] = endTimeVal.split(':');
@@ -421,6 +434,7 @@
 
     try {
       hideErr('sched-error');
+      console.log(`📝 Creando bloque: ${new Date(startMs).toLocaleString()} - ${new Date(endMs).toLocaleString()}`);
       const res = await fetch(`${API}/api/admin/vets/${vetId}/time-blocks`, {
         method: 'POST',
         headers: authHeaders(),
@@ -428,13 +442,17 @@
       });
       if (!res.ok) {
         const err = await res.json();
+        console.error(`❌ Error del servidor:`, err);
         throw new Error(err.error || 'Error creando bloque');
       }
+      const data = await res.json();
+      console.log(`✅ Bloque creado:`, data.block);
       showSuccessMsg('sched-success', '✓ Bloque agregado.');
       document.getElementById('block-start').value = '';
       document.getElementById('block-end').value = '';
       await loadTimeBlocks();
     } catch (e) {
+      console.error(`❌ Exception:`, e);
       showErr('sched-error', `Error: ${e.message}`);
     }
   });
