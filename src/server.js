@@ -756,10 +756,14 @@ app.post('/api/bookings', async (req, res) => {
 
     const startMs = new Date(startIso).getTime();
     if (isNaN(startMs)) return res.status(400).json({ error: 'Invalid date' });
-    const endMs = startMs + vet.slot_minutes * 60 * 1000;
+
+    const slotMinutes = vet.slot_minutes || 30; // Default 30 minutos si no está definido
+    const endMs = startMs + slotMinutes * 60 * 1000;
+    console.log(`📅 [BOOKING] Slot: ${slotMinutes}min, endMs: ${endMs}`);
 
     const nowMs = Date.now();
     const booked = await db.getBookedSlots(vet.id, nowMs, endMs + 1);
+    console.log(`📅 [BOOKING] Slots booked encontrados: ${booked.length}`);
 
     // Verificar que no esté booked
     const isBooked = booked.some(b => startMs < b.end_ms && endMs > b.start_ms);
@@ -784,7 +788,9 @@ app.post('/api/bookings', async (req, res) => {
         createdMs: Date.now(),
       };
 
+      console.log(`📅 [BOOKING] Insertando cita...`);
       const appointment = await db.insertAppointment(appointmentData);
+      console.log(`✅ [BOOKING] Cita insertada: ${appointment.id}`);
 
       const tz = vet.timezone || 'America/Caracas';
       const whenLocal = DateTime.fromMillis(startMs, { zone: tz }).toFormat(
@@ -792,6 +798,7 @@ app.post('/api/bookings', async (req, res) => {
         { locale: 'es' }
       );
 
+      console.log(`✅ [BOOKING] Retornando respuesta al cliente...`);
       // Retornar inmediatamente al cliente (simple y rápido)
       res.status(201).json({
         id: appointment.id,
@@ -802,6 +809,7 @@ app.post('/api/bookings', async (req, res) => {
         whatsappLink: buildWhatsappLink(appointment, vet),
         icsUrl: `/api/bookings/${appointment.id}/ics`,
       });
+      console.log(`✅ [BOOKING] Respuesta enviada: ${appointment.id}`);
     } catch (err) {
       if (err.code === 'UNIQUE_VIOLATION') {
         return res.status(409).json({ error: 'Slot already booked' });
