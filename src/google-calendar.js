@@ -1,57 +1,31 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { google } = require('googleapis');
 const { DateTime } = require('luxon');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
 
-let cachedAccessToken = null;
-let cachedTokenExpireAt = null;
+// Crear cliente OAuth autenticado
+function createAuthClient() {
+  const auth = new google.auth.OAuth2(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    'urn:ietf:wg:oauth:2.0:oob' // Redirect URI para desktop apps
+  );
 
-// Obtener access_token usando refresh_token
-async function getAccessToken() {
-  // Si tenemos un token en cache y no ha expirado, lo usamos
-  if (cachedAccessToken && cachedTokenExpireAt && Date.now() < cachedTokenExpireAt) {
-    return cachedAccessToken;
-  }
+  auth.setCredentials({
+    refresh_token: GOOGLE_REFRESH_TOKEN,
+  });
 
-  if (!GOOGLE_REFRESH_TOKEN) {
-    throw new Error('GOOGLE_REFRESH_TOKEN no configurado');
-  }
-
-  try {
-    const res = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
-        refresh_token: GOOGLE_REFRESH_TOKEN,
-        grant_type: 'refresh_token',
-      }).toString(),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(`Google OAuth error: ${err.error_description || err.error}`);
-    }
-
-    const data = await res.json();
-    cachedAccessToken = data.access_token;
-    cachedTokenExpireAt = Date.now() + (data.expires_in - 60) * 1000; // Cache por expires_in - 60s
-
-    return cachedAccessToken;
-  } catch (err) {
-    console.error('❌ Error obteniendo access_token:', err.message);
-    throw err;
-  }
+  return auth;
 }
 
-// Crear evento en Google Calendar
+// Crear evento en Google Calendar CON Google Meet
 async function createCalendarEvent(eventData) {
-  const accessToken = await getAccessToken();
+  const auth = createAuthClient();
+  const calendar = google.calendar({ version: 'v3', auth });
 
   const {
     vetEmail,
@@ -67,23 +41,19 @@ async function createCalendarEvent(eventData) {
     vetTimezone = 'America/Caracas',
   } = eventData;
 
-  // Formatear fechas para Google Calendar usando la zona horaria del vet
-  const { DateTime } = require('luxon');
+  // Formatear fechas para Google Calendar
   const startDt = DateTime.fromMillis(startMs, { zone: vetTimezone });
   const endDt = DateTime.fromMillis(endMs, { zone: vetTimezone });
-  const startDate = startDt.toISO();
-  const endDate = endDt.toISO();
 
   // Construir lista de asistentes
   const attendees = [
     {
       email: vetEmail,
       displayName: vetName,
-      responseStatus: 'accepted', // El creador es aceptado automáticamente
+      responseStatus: 'accepted',
     },
   ];
 
-  // Agregar tutor si tiene email
   if (tutorEmail) {
     attendees.push({
       email: tutorEmail,
@@ -92,29 +62,8 @@ async function createCalendarEvent(eventData) {
     });
   }
 
-  // Generar Meet room code en formato correcto: xxx-yyy-zzz (letras a-z)
-  // Usar appointmentId como semilla para generar código reproducible
-  const hexId = appointmentId.replace(/-/g, '');
-  const alphabet = 'abcdefghijklmnopqrstuvwxyz';
-  let roomCode = '';
-
-  for (let i = 0; i < 9 && i < hexId.length; i++) {
-    const charCode = hexId.charCodeAt(i);
-    // Convertir cada carácter del ID a un índice en el alfabeto (0-25)
-    roomCode += alphabet[charCode % 26];
-  }
-
-  // Asegurar que tenemos al menos 9 caracteres
-  while (roomCode.length < 9) {
-    roomCode += alphabet[roomCode.length % 26];
-  }
-
-  // Formato: xxx-yyy-zzz
-  const roomId = `${roomCode.substring(0, 3)}-${roomCode.substring(3, 6)}-${roomCode.substring(6, 9)}`;
-  const meetLink = `https://meet.google.com/${roomId}`;
-
-  // Construir evento SIN conferencia (más confiable)
-  const event = {
+  // Construir evento CON Google Meet
+  const eventBody = {
     summary: `🐾 Consulta Veterinaria - ${animalName}`,
     description: `
 Consulta veterinaria para ${animalName}
@@ -125,11 +74,16 @@ Consulta veterinaria para ${animalName}
 - Veterinario: ${vetName}
 ${description ? `- Notas: ${description}` : ''}
 
-🔗 Enlace de Google Meet:
-${meetLink}
+El enlace de Google Meet se incluirá en la invitación del calendario.
     `.trim(),
-    start: { dateTime: startDate, timeZone: vetTimezone },
-    end: { dateTime: endDate, timeZone: vetTimezone },
+    start: {
+      dateTime: startDt.toISO(),
+      timeZone: vetTimezone,
+    },
+    end: {
+      dateTime: endDt.toISO(),
+      timeZone: vetTimezone,
+    },
     attendees: attendees,
     reminders: {
       useDefault: false,
@@ -138,40 +92,58 @@ ${meetLink}
         { method: 'email', minutes: 15 },
       ],
     },
+    conferenceData: {
+      createRequest: {
+        requestId: appointmentId, // Usar appointmentId como requestId
+        conferenceSolutionKey: {
+          key: 'hangoutsMeet',
+        },
+      },
+    },
   };
 
   try {
-    // Crear evento en el calendario
-    const createRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(event),
+    console.log(`📅 [GOOGLE CALENDAR] Creando evento con Meet para cita ${appointmentId}...`);
+
+    const response = await calendar.events.insert({
+      calendarId: 'primary',
+      conferenceDataVersion: 1,
+      requestBody: eventBody,
     });
 
-    if (!createRes.ok) {
-      const err = await createRes.json();
-      throw new Error(`Google Calendar API error: ${err.error?.message || JSON.stringify(err)}`);
+    const event = response.data;
+    console.log(`✅ [GOOGLE CALENDAR] Evento creado: ${event.id}`);
+
+    // Extraer Meet link de la respuesta
+    let meetLink = null;
+    if (event.conferenceData && event.conferenceData.entryPoints) {
+      const meetEntry = event.conferenceData.entryPoints.find(
+        (ep) => ep.entryPointType === 'video'
+      );
+      if (meetEntry) {
+        meetLink = meetEntry.uri;
+        console.log(`✅ [GOOGLE CALENDAR] Meet link generado: ${meetLink}`);
+      }
     }
 
-    const createdEvent = await createRes.json();
-    console.log(`✅ [GOOGLE CALENDAR] Evento creado: ${createdEvent.id}`);
-    console.log(`✅ [GOOGLE CALENDAR] Meet link: ${meetLink}`);
+    if (!meetLink) {
+      console.warn(`⚠️  [GOOGLE CALENDAR] No se generó Meet link en la respuesta`);
+    }
 
     return {
-      eventId: createdEvent.id,
+      eventId: event.id,
       meetLink: meetLink,
-      eventLink: createdEvent.htmlLink,
+      eventLink: event.htmlLink,
     };
   } catch (err) {
     console.error('❌ Error creando evento en Calendar:', err.message);
+    if (err.errors) {
+      console.error('   Detalles:', err.errors);
+    }
     throw err;
   }
 }
 
 module.exports = {
   createCalendarEvent,
-  getAccessToken,
 };
