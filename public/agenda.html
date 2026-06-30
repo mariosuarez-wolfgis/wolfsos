@@ -385,7 +385,11 @@
   document.getElementById('btn-back-2').addEventListener('click', () => goTo(2));
 
   // --- Paso 3: Formulario ---
-  document.getElementById('booking-form').addEventListener('submit', async e => {
+  // Usar event delegation en document para que funcione incluso si el formulario se reemplaza
+  document.addEventListener('submit', async e => {
+    // Solo procesar si es el formulario de booking
+    if (e.target.id !== 'booking-form') return;
+
     console.log('🔥 SUBMIT EVENT FIRED - booking-form');
     e.preventDefault();
     hideError('form-error');
