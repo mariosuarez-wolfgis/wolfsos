@@ -884,7 +884,11 @@ app.get('/api/admin/vets/:vetId/time-blocks', async (req, res) => {
     const fromMs = parseInt(req.query.from) || Date.now() - 86400000;
     const toMs = parseInt(req.query.to) || Date.now() + 30 * 86400000;
 
+    console.log(`📋 Obteniendo bloques para ${vetId}: ${new Date(fromMs).toISOString()} - ${new Date(toMs).toISOString()}`);
+
     const blocks = await db.getVetTimeBlocks(vetId, fromMs, toMs);
+    console.log(`✅ ${blocks.length} bloques encontrados`);
+
     res.json({ blocks });
   } catch (err) {
     console.error(`❌ Error getting time blocks: ${err.message}`);
