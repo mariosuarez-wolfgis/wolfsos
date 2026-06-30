@@ -9,6 +9,7 @@ const db = require('./db');
 const adminService = require('./admin-service');
 const emailService = require('./email-service');
 const googleCalendar = require('./google-calendar');
+const { startRemindersCron } = require('./reminders');
 const { generateSlots } = require('./slots');
 const { buildIcs, buildWhatsappLink } = require('./format');
 const { DateTime } = require('luxon');
@@ -1321,4 +1322,7 @@ app.listen(PORT, () => {
   console.log(`   Tutor:    http://localhost:${PORT}/agenda.html`);
   console.log(`   Admin:    http://localhost:${PORT}/admin.html`);
   console.log(`   CORS:     ${CORS_ORIGIN}\n`);
+
+  // Iniciar cron job de recordatorios
+  startRemindersCron();
 });
