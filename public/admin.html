@@ -176,18 +176,61 @@
       <div id="sched-success" class="success-msg" style="display:none"></div>
 
       <div style="border: 1px solid #ddd; padding: 16px; border-radius: 8px; margin-bottom: 20px; background: #fafaf8;">
-        <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #333;">➕ Agregar bloque de disponibilidad</h3>
+        <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #333;">➕ Agregar disponibilidad</h3>
+
+        <!-- Rango de fechas -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
           <label style="display: flex; flex-direction: column; gap: 4px;">
-            <span style="font-size: .8rem; font-weight: 600; color: #444;">Fecha y Hora Inicio</span>
-            <input type="datetime-local" id="block-start" style="padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: .9rem;">
+            <span style="font-size: .8rem; font-weight: 600; color: #444;">Desde</span>
+            <input type="date" id="block-date-from" style="padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: .9rem;">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: .8rem; font-weight: 600; color: #444;">Hasta</span>
+            <input type="date" id="block-date-to" style="padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: .9rem;">
+          </label>
+        </div>
+
+        <!-- Días de la semana -->
+        <div style="margin-bottom: 12px;">
+          <span style="font-size: .8rem; font-weight: 600; color: #444; display: block; margin-bottom: 6px;">Días de la semana</span>
+          <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;">
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="block-day-1" value="1"> <span style="font-size: .8rem;">Lun</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="block-day-2" value="2"> <span style="font-size: .8rem;">Mar</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="block-day-3" value="3"> <span style="font-size: .8rem;">Mié</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="block-day-4" value="4"> <span style="font-size: .8rem;">Jue</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="block-day-5" value="5"> <span style="font-size: .8rem;">Vie</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="block-day-6" value="6"> <span style="font-size: .8rem;">Sab</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="block-day-7" value="7"> <span style="font-size: .8rem;">Dom</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Rango horario -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <label style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: .8rem; font-weight: 600; color: #444;">Hora Inicio</span>
+            <input type="time" id="block-time-from" style="padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: .9rem;">
           </label>
           <label style="display: flex; flex-direction: column; gap: 4px;">
             <span style="font-size: .8rem; font-weight: 600; color: #444;">Hora Fin</span>
-            <input type="time" id="block-end" style="padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: .9rem;">
+            <input type="time" id="block-time-to" style="padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: .9rem;">
           </label>
         </div>
-        <button class="btn btn-primary" id="btn-add-block" style="width: 100%;">Agregar bloque</button>
+
+        <button class="btn btn-primary" id="btn-add-block" style="width: 100%;">Agregar disponibilidad</button>
       </div>
 
       <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #333;">📅 Bloques actuales</h3>
@@ -540,54 +583,90 @@
   // Agregar bloque
   document.getElementById('btn-add-block').addEventListener('click', async () => {
     hideErr('sched-error');
-    const startVal = document.getElementById('block-start').value;
-    const endTimeVal = document.getElementById('block-end').value;
+    const dateFromVal = document.getElementById('block-date-from').value;
+    const dateToVal = document.getElementById('block-date-to').value;
+    const timeFromVal = document.getElementById('block-time-from').value;
+    const timeToVal = document.getElementById('block-time-to').value;
 
-    if (!startVal || !endTimeVal) {
-      showErr('sched-error', 'Completa fecha/hora inicio y hora fin.');
+    // Obtener días seleccionados
+    const selectedDays = [];
+    for (let i = 1; i <= 7; i++) {
+      const checkbox = document.getElementById(`block-day-${i}`);
+      if (checkbox && checkbox.checked) selectedDays.push(i);
+    }
+
+    if (!dateFromVal || !dateToVal || !timeFromVal || !timeToVal || selectedDays.length === 0) {
+      showErr('sched-error', 'Completa rango de fechas, selecciona días y horario.');
       return;
     }
 
-    // Parsear fecha inicio
-    const startDate = new Date(startVal);
-    const startMs = startDate.getTime();
-    const now = Date.now();
+    // Parsear fechas
+    const dateFrom = new Date(dateFromVal);
+    const dateTo = new Date(dateToVal);
+    const [timeFromHour, timeFromMin] = timeFromVal.split(':');
+    const [timeToHour, timeToMin] = timeToVal.split(':');
 
-    // Validar que la fecha/hora sea futura (al menos 1 minuto en el futuro)
-    if (startMs <= now) {
-      showErr('sched-error', 'La fecha y hora debe ser presente o futura.');
+    if (dateFrom > dateTo) {
+      showErr('sched-error', 'La fecha "Hasta" debe ser después de "Desde".');
       return;
     }
 
-    // Parsear hora fin (usar la misma fecha que inicio)
-    const [endHour, endMin] = endTimeVal.split(':');
-    const endDate = new Date(startDate);
-    endDate.setHours(parseInt(endHour), parseInt(endMin), 0, 0);
-    const endMs = endDate.getTime();
-
-    if (startMs >= endMs) {
+    if (timeFromVal >= timeToVal) {
       showErr('sched-error', 'La hora fin debe ser después del inicio.');
+      return;
+    }
+
+    // Generar bloques para cada día seleccionado en el rango
+    const blocks = [];
+    for (let d = new Date(dateFrom); d <= dateTo; d.setDate(d.getDate() + 1)) {
+      const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay(); // Convertir Sunday(0) a 7
+      if (!selectedDays.includes(dayOfWeek)) continue;
+
+      const blockStart = new Date(d);
+      blockStart.setHours(parseInt(timeFromHour), parseInt(timeFromMin), 0, 0);
+      const blockEnd = new Date(d);
+      blockEnd.setHours(parseInt(timeToHour), parseInt(timeToMin), 0, 0);
+
+      const now = Date.now();
+      if (blockStart.getTime() <= now) continue; // Saltar bloques pasados
+
+      blocks.push({ startMs: blockStart.getTime(), endMs: blockEnd.getTime() });
+    }
+
+    if (blocks.length === 0) {
+      showErr('sched-error', 'No hay bloques válidos en el rango seleccionado.');
       return;
     }
 
     try {
       hideErr('sched-error');
-      console.log(`📝 Creando bloque: ${new Date(startMs).toLocaleString()} - ${new Date(endMs).toLocaleString()}`);
-      const res = await fetch(`${API}/api/admin/vets/${vetId}/time-blocks`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ startMs, endMs, durationMinutes: 30 })
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        console.error(`❌ Error del servidor:`, err);
-        throw new Error(err.error || 'Error creando bloque');
+      console.log(`📝 Creando ${blocks.length} bloques de disponibilidad...`);
+
+      // Crear cada bloque
+      for (const block of blocks) {
+        const res = await fetch(`${API}/api/admin/vets/${vetId}/time-blocks`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ startMs: block.startMs, endMs: block.endMs, durationMinutes: 30 })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          console.error(`❌ Error del servidor:`, err);
+          throw new Error(err.error || 'Error creando bloque');
+        }
+        const data = await res.json();
+        console.log(`✅ Bloque creado:`, data.block);
       }
-      const data = await res.json();
-      console.log(`✅ Bloque creado:`, data.block);
-      showSuccessMsg('sched-success', '✓ Bloque agregado.');
-      document.getElementById('block-start').value = '';
-      document.getElementById('block-end').value = '';
+
+      showSuccessMsg('sched-success', `✓ ${blocks.length} bloques de disponibilidad agregados.`);
+      document.getElementById('block-date-from').value = '';
+      document.getElementById('block-date-to').value = '';
+      document.getElementById('block-time-from').value = '';
+      document.getElementById('block-time-to').value = '';
+      for (let i = 1; i <= 7; i++) {
+        const cb = document.getElementById(`block-day-${i}`);
+        if (cb) cb.checked = false;
+      }
       await loadTimeBlocks();
     } catch (e) {
       console.error(`❌ Exception:`, e);
