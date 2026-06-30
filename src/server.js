@@ -9,6 +9,7 @@ const db = require('./db');
 const adminService = require('./admin-service');
 const emailService = require('./email-service');
 const googleCalendar = require('./google-calendar');
+const googleAuth = require('./google-auth');
 const { startRemindersCron } = require('./reminders');
 const { generateSlots } = require('./slots');
 const { buildIcs, buildWhatsappLink } = require('./format');
@@ -741,6 +742,83 @@ app.get('/api/vets/:id/slots', async (req, res) => {
     res.json(slots.sort((a, b) => a.startMs - b.startMs));
   } catch (err) {
     console.error(`❌ [SLOTS] Error:`, err.message, err.stack);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// GOOGLE OAUTH
+// ============================================
+
+app.get('/api/vets/:vetId/google/auth-url', requireAuth, async (req, res) => {
+  try {
+    const { vetId } = req.params;
+
+    // Verificar que sea el mismo vet
+    if (req.vetId && req.vetId !== vetId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const authUrl = googleAuth.getAuthUrl(vetId);
+    console.log(`🔐 [GOOGLE AUTH] URL generada para vet ${vetId}`);
+    res.json({ authUrl });
+  } catch (err) {
+    console.error('❌ Error generando Google auth URL:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/vets/:vetId/google/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    const vetId = state; // El state es el vetId
+
+    if (!code || !vetId) {
+      return res.status(400).json({ error: 'Missing code or vetId' });
+    }
+
+    console.log(`🔐 [GOOGLE AUTH] Recibido callback para vet ${vetId}`);
+
+    // Intercambiar código por tokens
+    const tokens = await googleAuth.exchangeCodeForTokens(code);
+    console.log(`✅ [GOOGLE AUTH] Tokens obtenidos para ${vetId}`);
+
+    // Guardar refresh_token en BD
+    await db.updateVet(vetId, {
+      google_refresh_token: tokens.refresh_token,
+      google_connected: true,
+      google_connected_at: new Date().toISOString(),
+    });
+
+    console.log(`✅ [GOOGLE AUTH] Refresh token guardado para vet ${vetId}`);
+
+    // Redirigir de vuelta al panel con parámetro de éxito
+    const redirectUrl = `/admin.html?google_connected=true&vet=${vetId}`;
+    res.redirect(redirectUrl);
+  } catch (err) {
+    console.error('❌ Error en Google OAuth callback:', err.message);
+    res.redirect(`/admin.html?google_error=${encodeURIComponent(err.message)}`);
+  }
+});
+
+app.post('/api/vets/:vetId/google/disconnect', requireAuth, async (req, res) => {
+  try {
+    const { vetId } = req.params;
+
+    // Verificar que sea el mismo vet o admin
+    if (req.vetId && req.vetId !== vetId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    await db.updateVet(vetId, {
+      google_refresh_token: null,
+      google_connected: false,
+    });
+
+    console.log(`✅ [GOOGLE AUTH] Google desconectado para vet ${vetId}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('❌ Error desconectando Google:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

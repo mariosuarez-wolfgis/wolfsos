@@ -105,6 +105,14 @@ async function updateVetGoogleTokens(vetId, accessToken, refreshToken) {
   if (error) throw error;
 }
 
+async function updateVet(vetId, updates) {
+  const { error } = await supabase
+    .from('vets')
+    .update(updates)
+    .eq('id', vetId);
+  if (error) throw error;
+}
+
 // --- ADMIN ---
 
 async function getAdmin(email) {
@@ -673,6 +681,7 @@ module.exports = {
   createVetWithGoogle,
   createVetWithPassword,
   updateVetGoogleTokens,
+  updateVet,
   // Admin
   getAdmin,
   createAdmin,
