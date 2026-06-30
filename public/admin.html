@@ -349,6 +349,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
 <script>
   const API = (() => {
     const p = new URLSearchParams(location.search);
@@ -693,10 +694,22 @@
       console.log(`📝 Creando ${blocks.length} bloques de disponibilidad...`);
 
       // Crear UN SOLO bloque recurrente con la configuración
-      const blockStart = new Date(dateFromVal);
-      blockStart.setHours(parseInt(timeFromHour), parseInt(timeFromMin), 0, 0);
-      const blockEnd = new Date(dateFromVal);
-      blockEnd.setHours(parseInt(timeToHour), parseInt(timeToMin), 0, 0);
+      // Usar Luxon para crear las horas en la zona horaria del vet
+      const { DateTime } = luxon;
+      const blockStartDt = DateTime.fromISO(dateFromVal).setZone(vetTimezone).set({
+        hour: parseInt(timeFromHour),
+        minute: parseInt(timeFromMin),
+        second: 0,
+        millisecond: 0
+      });
+      const blockEndDt = DateTime.fromISO(dateFromVal).setZone(vetTimezone).set({
+        hour: parseInt(timeToHour),
+        minute: parseInt(timeToMin),
+        second: 0,
+        millisecond: 0
+      });
+      const blockStart = { getTime: () => blockStartDt.toMillis() };
+      const blockEnd = { getTime: () => blockEndDt.toMillis() };
 
       const res = await fetch(`${API}/api/admin/vets/${vetId}/time-blocks`, {
         method: 'POST',
