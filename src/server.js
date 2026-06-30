@@ -798,47 +798,7 @@ app.get('/api/bookings/:id/ics', async (req, res) => {
 // VET ROUTES (Protegidas con JWT)
 // ============================================
 
-app.get('/api/admin/vets/:vetId/time-blocks', googleAuth.requireAuth, async (req, res) => {
-  try {
-    if (req.vetId !== req.params.vetId) {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
-
-    const blocks = await db.getVetTimeBlocks(req.params.vetId, 0, Date.now() + 90 * 86_400_000);
-    res.json(blocks);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/admin/vets/:vetId/time-blocks', googleAuth.requireAuth, async (req, res) => {
-  try {
-    if (req.vetId !== req.params.vetId) {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
-
-    const { startMs, endMs, durationMinutes } = req.body;
-    if (!startMs || !endMs) return res.status(400).json({ error: 'Start and end times required' });
-
-    const block = await db.createTimeBlock(req.params.vetId, startMs, endMs, durationMinutes);
-    res.status(201).json(block);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.delete('/api/admin/vets/:vetId/time-blocks/:blockId', googleAuth.requireAuth, async (req, res) => {
-  try {
-    if (req.vetId !== req.params.vetId) {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
-
-    await db.deleteTimeBlock(req.params.blockId);
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// Endpoints viejos eliminados - usar los nuevos abajo con formato correcto
 
 app.get('/api/admin/vets/:vetId/appointments', googleAuth.requireAuth, async (req, res) => {
   try {
