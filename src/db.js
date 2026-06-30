@@ -545,6 +545,20 @@ async function listAppointmentsByStatus(vetId, status = null, fromMs = null) {
   return data || [];
 }
 
+// Obtener citas próximas para recordatorios (todas las citas booked en un rango de tiempo)
+async function getUpcomingAppointments(fromMs, toMs) {
+  const { data, error } = await supabase
+    .from('appointments')
+    .select('*')
+    .eq('status', 'booked')
+    .gte('start_ms', fromMs)
+    .lte('start_ms', toMs)
+    .order('start_ms', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
 async function getVetAppointmentStats(vetId, fromMs = null, toMs = null) {
   let query = supabase
     .from('appointments')
@@ -658,6 +672,8 @@ module.exports = {
   insertAppointment,
   getAppointment,
   listAppointments,
+  listAppointmentsByStatus,
+  getUpcomingAppointments,
   updateAppointmentGoogleData,
   // Triage
   createTriageForm,

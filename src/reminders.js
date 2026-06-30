@@ -40,16 +40,7 @@ async function checkAndSendReminders() {
   const upcomingMs = now + oneHourMs + 5 * 60 * 1000; // +5 min buffer
 
   try {
-    const appointments = await db.supabase
-      .from('appointments')
-      .select('*')
-      .eq('status', 'booked')
-      .gte('start_ms', now)
-      .lte('start_ms', upcomingMs);
-
-    if (appointments.error) throw appointments.error;
-
-    const appts = appointments.data || [];
+    const appts = await db.getUpcomingAppointments(now, upcomingMs);
 
     for (const appt of appts) {
       const timeUntilStart = appt.start_ms - now;
