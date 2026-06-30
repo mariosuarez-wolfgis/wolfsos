@@ -161,6 +161,8 @@
           <th>Especialidad</th>
           <th>Ubicación</th>
           <th>WhatsApp</th>
+          <th>Estado</th>
+          <th>Acción</th>
         </tr>
       </thead>
       <tbody id="vetsBody">
@@ -338,6 +340,11 @@
       const tbody = document.getElementById('vetsBody');
       tbody.innerHTML = '';
       vets.forEach(v => {
+        const statusColor = v.active ? '#2e7d32' : '#999';
+        const statusText = v.active ? '✅ Activo' : '❌ Inactivo';
+        const buttonText = v.active ? 'Desactivar' : 'Activar';
+        const buttonColor = v.active ? '#f57f17' : '#2d6a4f';
+
         tbody.innerHTML += `
           <tr>
             <td><strong>${v.name}</strong></td>
@@ -345,12 +352,47 @@
             <td>${v.specialty || '-'}</td>
             <td>${v.location || '-'}</td>
             <td>${v.whatsapp || '-'}</td>
+            <td><span style="color: ${statusColor}; font-weight: 600; font-size: 0.85rem;">${statusText}</span></td>
+            <td>
+              <button
+                class="btn btn-sm"
+                style="background: ${buttonColor}; color: white; cursor: pointer; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: 600;"
+                onclick="toggleVetStatus('${v.id}', ${v.active})">
+                ${buttonText}
+              </button>
+            </td>
           </tr>
         `;
       });
-      if (vets.length === 0) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: #999;">Sin veterinarios</td></tr>';
+      if (vets.length === 0) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: #999;">Sin veterinarios</td></tr>';
     } catch (e) {
       console.error('Error loading vets:', e);
+    }
+  }
+
+  async function toggleVetStatus(vetId, currentActive) {
+    try {
+      const newStatus = !currentActive;
+      const action = newStatus ? 'activar' : 'desactivar';
+
+      if (!confirm(`¿${action} este veterinario?`)) return;
+
+      const res = await fetch(`${API}/api/admin/vets/${vetId}/status`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ active: newStatus })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(`Error: ${err.error || 'No se pudo cambiar el estado'}`);
+        return;
+      }
+
+      alert(`Veterinario ${newStatus ? 'activado' : 'desactivado'} correctamente`);
+      loadVets();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
     }
   }
 

@@ -1125,6 +1125,31 @@ app.post('/api/admin/invite', requireAdmin, async (req, res) => {
   }
 });
 
+// Activar/Desactivar veterinario
+app.put('/api/admin/vets/:vetId/status', requireAdmin, async (req, res) => {
+  try {
+    const { vetId } = req.params;
+    const { active } = req.body;
+
+    if (typeof active !== 'boolean') {
+      return res.status(400).json({ error: 'Active debe ser true o false' });
+    }
+
+    const { error } = await supabase
+      .from('vets')
+      .update({ active })
+      .eq('id', vetId);
+
+    if (error) throw error;
+
+    console.log(`✅ Vet ${vetId} ${active ? 'activated' : 'deactivated'}`);
+    res.json({ success: true, active });
+  } catch (err) {
+    console.error(`❌ Error updating vet status: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {
     const stats = await adminService.getAdminStats();
