@@ -280,6 +280,27 @@
   </div>
 </div>
 
+<!-- Modal para cambiar estado de cita -->
+<div id="status-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 999;">
+  <div style="background: white; border-radius: 12px; padding: 24px; max-width: 400px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+    <h3 id="modal-title" style="margin-bottom: 16px; color: #1b4332;"></h3>
+    <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 16px;">
+      <button onclick="selectStatusFromModal('attended')" style="background: #4caf50; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">
+        ✅ Atendida
+      </button>
+      <button onclick="selectStatusFromModal('no_show')" style="background: #ff9800; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">
+        ❌ No asistió
+      </button>
+      <button onclick="selectStatusFromModal('cancelled')" style="background: #f44336; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">
+        🚫 Cancelada
+      </button>
+    </div>
+    <button onclick="closeStatusModal()" style="background: #e0e0e0; color: #333; border: none; padding: 10px; border-radius: 8px; width: 100%; cursor: pointer; font-weight: 600;">
+      ✕ Cancelar
+    </button>
+  </div>
+</div>
+
 <script>
   const API = (() => {
     const p = new URLSearchParams(location.search);
@@ -658,18 +679,28 @@
     });
   }
 
-  function openStatusModal(appointmentId, animalName) {
-    const status = confirm(`¿Marcar "${animalName}" como ATENDIDA?`);
-    let newStatus = 'attended';
+  let pendingStatusChange = { appointmentId: null, animalName: null };
 
-    if (!status) {
-      const options = prompt('Ingresa: attended, no_show, o cancelled');
-      if (!['attended', 'no_show', 'cancelled'].includes(options)) return;
-      newStatus = options;
-    }
+  function openStatusModal(appointmentId, animalName) {
+    pendingStatusChange = { appointmentId, animalName };
+    document.getElementById('modal-title').textContent = `¿Qué pasó con "${animalName}"?`;
+
+    const modal = document.getElementById('status-modal');
+    modal.style.display = 'flex';
+  }
+
+  function closeStatusModal() {
+    document.getElementById('status-modal').style.display = 'none';
+    pendingStatusChange = { appointmentId: null, animalName: null };
+  }
+
+  function selectStatusFromModal(status) {
+    const { appointmentId } = pendingStatusChange;
+    if (!appointmentId) return;
 
     const reason = prompt('Motivo (opcional):');
-    updateApptStatus(appointmentId, newStatus, reason);
+    closeStatusModal();
+    updateApptStatus(appointmentId, status, reason);
   }
 
   async function updateApptStatus(appointmentId, status, reason) {
