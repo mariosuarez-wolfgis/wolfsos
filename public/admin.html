@@ -155,11 +155,16 @@
 
   <div id="main-panel" style="display:none">
     <div class="header">
-      <h1>🐾 Wolf SOS — Panel veterinario</h1>
-      <div style="display:flex;gap:10px;align-items:center">
-        <span id="header-name"></span>
-        <button class="logout-btn" id="btn-logout">Salir</button>
+      <div>
+        <h1>🐾 Wolf SOS</h1>
+        <p style="font-size: 0.85rem; color: rgba(255,255,255,0.9); margin-top: 4px;" id="header-name"></p>
       </div>
+      <button class="logout-btn" id="btn-logout">Salir</button>
+    </div>
+
+    <!-- Banner inspirador -->
+    <div style="background: linear-gradient(135deg, #003D70 0%, #4A90E2 100%); color: white; padding: 16px 20px; margin: 0 -24px -16px; border-radius: 0 0 12px 12px; text-align: center; font-size: 0.85rem; font-weight: 500; margin-bottom: 20px;">
+      🕊️ <strong>Mi Gente VE</strong> y <strong>Wolf GIS</strong> — Juntos por la salud animal en Venezuela
     </div>
 
     <nav>
@@ -379,7 +384,7 @@
 
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('main-panel').style.display = 'block';
-      document.getElementById('header-name').textContent = vetName;
+      document.getElementById('header-name').textContent = `⚕️ Dr/Dra. ${vetName}`;
       document.getElementById('analytics-tab').style.display = 'none'; // Ocultar tab de analytics para vets
 
       loadTimeBlocks();
@@ -455,7 +460,7 @@
 
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('main-panel').style.display = 'block';
-      document.getElementById('header-name').textContent = vetName;
+      document.getElementById('header-name').textContent = `⚕️ Dr/Dra. ${vetName}`;
       hideErr('login-error');
 
       await loadTimeBlocks();
