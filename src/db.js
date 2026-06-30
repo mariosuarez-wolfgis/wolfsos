@@ -168,8 +168,9 @@ async function getAvailableSlotsForBooking(vetId, fromMs, toMs) {
       const endDate = Math.min(block.recurring_end_date || toMs, toMs);
 
       const blockDuration = block.end_ms - block.start_ms;
-      const baseDate = new Date(block.start_ms);
-      const baseTime = baseDate.getTime() - baseDate.setHours(0, 0, 0, 0);
+      const baseDateMidnight = new Date(block.start_ms);
+      baseDateMidnight.setHours(0, 0, 0, 0);
+      const baseTime = block.start_ms - baseDateMidnight.getTime();
 
       for (let d = new Date(fromMs); d <= new Date(endDate); d.setDate(d.getDate() + 1)) {
         const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay();
