@@ -166,7 +166,7 @@
       <button class="tab active" data-tab="tab-schedule">Horario</button>
       <button class="tab" data-tab="tab-timeoff">Ausencias</button>
       <button class="tab" data-tab="tab-appts">Mis citas</button>
-      <button class="tab" data-tab="tab-analytics" id="analytics-tab" style="display: none;">Analytics</button>
+      <button class="tab" data-tab="tab-analytics" id="analytics-tab">Analytics</button>
     </nav>
 
     <div class="panel visible" id="tab-schedule">
@@ -247,7 +247,7 @@
       <div class="appt-list" id="appt-list"><div class="loading">Cargando…</div></div>
     </div>
 
-    <div class="panel" id="tab-analytics" style="display: none;">
+    <div class="panel" id="tab-analytics">
       <h2>Analytics & Reportes</h2>
 
       <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
@@ -353,16 +353,24 @@
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('main-panel').style.display = 'block';
       document.getElementById('header-name').textContent = '👑 Admin';
-      document.getElementById('analytics-tab').style.display = 'block'; // Mostrar tab de analytics para admin
 
       // Ocultar tabs de vet para admin
       document.querySelector('[data-tab="tab-schedule"]').style.display = 'none';
       document.querySelector('[data-tab="tab-timeoff"]').style.display = 'none';
       document.querySelector('[data-tab="tab-appts"]').style.display = 'none';
 
+      // Ocultar paneles de vet
+      document.getElementById('tab-schedule').style.display = 'none';
+      document.getElementById('tab-timeoff').style.display = 'none';
+      document.getElementById('tab-appts').style.display = 'none';
+
       // Mostrar solo Analytics
+      document.getElementById('analytics-tab').style.display = 'block';
+      document.querySelector('[data-tab="tab-analytics"]').classList.add('active');
+      document.querySelector('[data-tab="tab-analytics"]').classList.remove('active');
       document.querySelector('[data-tab="tab-analytics"]').classList.add('active');
       document.getElementById('tab-analytics').classList.add('visible');
+
       initAnalyticsDatePickers();
       loadAnalytics();
     }
