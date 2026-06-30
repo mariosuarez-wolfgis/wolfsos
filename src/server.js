@@ -689,16 +689,22 @@ app.get('/api/vets/:id', async (req, res) => {
 // SLOTS desde bloques flexibles
 app.get('/api/vets/:id/slots', async (req, res) => {
   try {
+    console.log(`🕐 [SLOTS] Obteniendo slots para vet ${req.params.id}`);
     const vet = await db.getVetById(req.params.id);
-    if (!vet) return res.status(404).json({ error: 'Veterinarian not found' });
+    if (!vet) {
+      console.warn(`❌ [SLOTS] Vet no encontrado: ${req.params.id}`);
+      return res.status(404).json({ error: 'Veterinarian not found' });
+    }
 
     const days = Math.min(parseInt(req.query.days) || 7, 30);
     const nowMs = Date.now();
     const toMs = nowMs + days * 86_400_000;
 
+    console.log(`🕐 [SLOTS] Buscando bloques desde ${new Date(nowMs).toISOString()} hasta ${new Date(toMs).toISOString()}`);
     // Obtener bloques de tiempo del vet (expandidos para búsqueda)
     const timeBlocks = await db.getAvailableSlotsForBooking(vet.id, nowMs, toMs);
     const booked = await db.getBookedSlots(vet.id, nowMs, toMs);
+    console.log(`🕐 [SLOTS] Bloques encontrados: ${timeBlocks.length}, Citas booked: ${booked.length}`);
 
     // Generar slots desde bloques
     const slots = [];
@@ -731,8 +737,10 @@ app.get('/api/vets/:id/slots', async (req, res) => {
       }
     });
 
+    console.log(`🕐 [SLOTS] Devolviendo ${slots.length} slots disponibles`);
     res.json(slots.sort((a, b) => a.startMs - b.startMs));
   } catch (err) {
+    console.error(`❌ [SLOTS] Error:`, err.message, err.stack);
     res.status(500).json({ error: err.message });
   }
 });
