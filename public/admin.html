@@ -696,13 +696,18 @@
       // Crear UN SOLO bloque recurrente con la configuración
       // Usar Luxon para crear las horas en la zona horaria del vet
       const { DateTime } = luxon;
-      const blockStartDt = DateTime.fromISO(dateFromVal).setZone(vetTimezone).set({
+
+      // Asegurar que la fecha está en formato ISO (YYYY-MM-DD)
+      const dateIso = dateFromVal.includes('-') ? dateFromVal : dateFromVal.split('/').reverse().join('-');
+      console.log(`📅 Fecha: ${dateFromVal} → ${dateIso}`);
+
+      const blockStartDt = DateTime.fromISO(dateIso).setZone(vetTimezone).set({
         hour: parseInt(timeFromHour),
         minute: parseInt(timeFromMin),
         second: 0,
         millisecond: 0
       });
-      const blockEndDt = DateTime.fromISO(dateFromVal).setZone(vetTimezone).set({
+      const blockEndDt = DateTime.fromISO(dateIso).setZone(vetTimezone).set({
         hour: parseInt(timeToHour),
         minute: parseInt(timeToMin),
         second: 0,
