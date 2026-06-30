@@ -3,25 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wolf SOS — Telemedicina Veterinaria</title>
+  <title>Wolf SOS — Emergencia Veterinaria Venezuela</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-      background: linear-gradient(135deg, #f5f5f0 0%, #f0faf4 100%);
-      color: #1a1a1a;
+      background: #f8f9fa;
+      color: #333;
       line-height: 1.6;
     }
 
     /* HEADER / NAVBAR */
     header {
-      background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+      background: #003D70;
       color: white;
       padding: 16px 0;
       position: sticky;
       top: 0;
-      box-shadow: 0 4px 15px rgba(27, 67, 50, 0.15);
+      box-shadow: 0 2px 10px rgba(0, 61, 112, 0.15);
       z-index: 100;
     }
 
@@ -35,18 +35,21 @@
     }
 
     .logo {
-      font-size: 1.5rem;
+      font-size: 1.2rem;
       font-weight: 800;
-      letter-spacing: -0.5px;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     nav a {
       color: white;
       text-decoration: none;
-      margin-left: 30px;
+      margin-left: 25px;
       font-weight: 500;
       transition: opacity 0.3s;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
 
     nav a:hover { opacity: 0.8; }
@@ -55,42 +58,53 @@
     .hero {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 80px 20px;
+      padding: 60px 20px;
       text-align: center;
     }
 
     .hero h1 {
-      font-size: 3.5rem;
-      color: #1b4332;
+      font-size: 2.8rem;
+      color: #003D70;
       margin-bottom: 20px;
       font-weight: 800;
-      letter-spacing: -1px;
-      line-height: 1.1;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
     }
 
-    .hero p {
-      font-size: 1.3rem;
-      color: #555;
-      margin-bottom: 40px;
+    .hero .subtitle {
+      font-size: 1.1rem;
+      color: #666;
+      margin-bottom: 30px;
       max-width: 700px;
       margin-left: auto;
       margin-right: auto;
+      font-weight: 500;
+    }
+
+    .hero p {
+      font-size: 1rem;
+      color: #666;
+      margin-bottom: 40px;
+      max-width: 750px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.8;
     }
 
     .cta-buttons {
       display: flex;
-      gap: 20px;
+      gap: 15px;
       justify-content: center;
       flex-wrap: wrap;
-      margin-bottom: 60px;
+      margin-bottom: 40px;
     }
 
     .btn {
-      padding: 16px 40px;
-      font-size: 1.05rem;
+      padding: 14px 32px;
+      font-size: 0.95rem;
       font-weight: 700;
       border: none;
-      border-radius: 12px;
+      border-radius: 8px;
       cursor: pointer;
       text-decoration: none;
       transition: all 0.3s;
@@ -99,174 +113,159 @@
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+      background: #4A90E2;
       color: white;
-      box-shadow: 0 8px 20px rgba(27, 67, 50, 0.2);
+      box-shadow: 0 4px 12px rgba(74, 144, 226, 0.25);
     }
 
     .btn-primary:hover {
+      background: #357abd;
       transform: translateY(-2px);
-      box-shadow: 0 12px 30px rgba(27, 67, 50, 0.3);
+      box-shadow: 0 6px 16px rgba(74, 144, 226, 0.35);
     }
 
     .btn-secondary {
       background: white;
-      color: #1b4332;
-      border: 2px solid #1b4332;
+      color: #003D70;
+      border: 2px solid #003D70;
       font-weight: 700;
     }
 
     .btn-secondary:hover {
-      background: #f5f5f0;
+      background: #f0f4f8;
       transform: translateY(-2px);
     }
 
     .hero-image {
-      max-width: 600px;
-      margin: 0 auto 60px;
-      font-size: 5rem;
-      animation: float 3s ease-in-out infinite;
+      max-width: 500px;
+      margin: 0 auto 40px;
+      font-size: 4rem;
     }
 
-    @keyframes float {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-20px); }
-    }
-
-    /* FEATURES SECTION */
-    .features {
+    /* INFO SECTION */
+    .info {
       background: white;
-      padding: 80px 20px;
-      border-radius: 20px;
+      padding: 60px 20px;
+      border-radius: 12px;
       margin: 60px auto;
       max-width: 1200px;
-      box-shadow: 0 2px 20px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 15px rgba(0,0,0,0.05);
     }
 
-    .features h2 {
+    .info h2 {
       text-align: center;
-      font-size: 2.5rem;
-      color: #1b4332;
-      margin-bottom: 50px;
+      font-size: 2.2rem;
+      color: #003D70;
+      margin-bottom: 40px;
       font-weight: 800;
     }
 
-    .feature-grid {
+    .info-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 30px;
-      margin-bottom: 40px;
+      margin-bottom: 30px;
     }
 
-    .feature-card {
-      padding: 30px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #f0faf4 0%, #e8f5e9 100%);
-      border-left: 5px solid #2d6a4f;
+    .info-card {
+      padding: 25px;
+      border-radius: 8px;
+      background: #f0f4f8;
+      border-left: 4px solid #4A90E2;
       transition: transform 0.3s, box-shadow 0.3s;
     }
 
-    .feature-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 12px 30px rgba(27, 67, 50, 0.1);
+    .info-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(74, 144, 226, 0.1);
     }
 
-    .feature-card .icon {
-      font-size: 3rem;
-      margin-bottom: 15px;
-    }
-
-    .feature-card h3 {
-      color: #1b4332;
+    .info-card .icon {
+      font-size: 2.5rem;
       margin-bottom: 12px;
-      font-size: 1.3rem;
+    }
+
+    .info-card h3 {
+      color: #003D70;
+      margin-bottom: 10px;
+      font-size: 1.1rem;
       font-weight: 700;
     }
 
-    .feature-card p {
-      color: #666;
-      line-height: 1.7;
-      font-size: 0.95rem;
+    .info-card p {
+      color: #555;
+      line-height: 1.6;
+      font-size: 0.9rem;
     }
 
-    /* STATS SECTION */
-    .stats {
+    /* MISSION SECTION */
+    .mission {
+      background: #003D70;
+      color: white;
+      padding: 60px 20px;
+      margin: 60px 0 0;
+    }
+
+    .mission-content {
       max-width: 1200px;
-      margin: 60px auto;
-      padding: 0 20px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 30px;
+      margin: 0 auto;
       text-align: center;
     }
 
-    .stat-item {
-      background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
-      color: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 8px 20px rgba(27, 67, 50, 0.15);
-    }
-
-    .stat-item .number {
-      font-size: 2.5rem;
+    .mission h2 {
+      font-size: 2.2rem;
+      margin-bottom: 25px;
       font-weight: 800;
-      margin-bottom: 8px;
     }
 
-    .stat-item p {
+    .mission p {
+      font-size: 1.05rem;
+      line-height: 1.8;
+      opacity: 0.95;
+      max-width: 800px;
+      margin: 0 auto 40px;
+    }
+
+    .mission-logos {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 40px;
+      padding-top: 40px;
+      border-top: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .mission-logos strong {
+      font-weight: 600;
       font-size: 0.95rem;
-      opacity: 0.95;
-    }
-
-    /* CTA SECTION */
-    .cta-section {
-      background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
-      color: white;
-      padding: 80px 20px;
-      text-align: center;
-      margin: 80px 0 0;
-      border-radius: 20px;
-      margin-left: 20px;
-      margin-right: 20px;
-    }
-
-    .cta-section h2 {
-      font-size: 2.5rem;
-      margin-bottom: 20px;
-      font-weight: 800;
-    }
-
-    .cta-section p {
-      font-size: 1.1rem;
-      margin-bottom: 40px;
-      opacity: 0.95;
     }
 
     .cta-buttons-secondary {
       display: flex;
-      gap: 20px;
+      gap: 15px;
       justify-content: center;
       flex-wrap: wrap;
     }
 
     .btn-white {
       background: white;
-      color: #1b4332;
-      padding: 14px 36px;
+      color: #003D70;
+      padding: 12px 30px;
       font-weight: 700;
       border: none;
-      border-radius: 10px;
+      border-radius: 8px;
       cursor: pointer;
       text-decoration: none;
       transition: all 0.3s;
       display: inline-block;
-      font-size: 1rem;
+      font-size: 0.95rem;
     }
 
     .btn-white:hover {
+      background: #f0f4f8;
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(255,255,255,0.2);
     }
 
     /* FOOTER */
@@ -275,17 +274,36 @@
       color: white;
       padding: 40px 20px;
       text-align: center;
-      font-size: 0.9rem;
-      margin-top: 60px;
+      font-size: 0.85rem;
+      margin-top: 0;
+    }
+
+    footer strong {
+      color: #4A90E2;
+      font-weight: 600;
     }
 
     footer a {
-      color: #40916c;
+      color: #4A90E2;
       text-decoration: none;
       font-weight: 600;
     }
 
     footer a:hover { text-decoration: underline; }
+
+    .footer-content {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
 
     /* RESPONSIVE */
     @media (max-width: 768px) {
@@ -324,104 +342,107 @@
 <!-- HEADER -->
 <header>
   <div class="nav-container">
-    <div class="logo">🐾 Wolf SOS</div>
+    <div class="logo">
+      🐾 <strong>Wolf SOS</strong>
+    </div>
     <nav>
-      <a href="#features">Características</a>
-      <a href="#cta">Comenzar</a>
+      <a href="#about">Acerca de</a>
+      <a href="#access">Acceso</a>
     </nav>
   </div>
 </header>
 
 <!-- HERO SECTION -->
 <section class="hero">
-  <div class="hero-image">🏥</div>
-  <h1>Telemedicina Veterinaria a tu Alcance</h1>
-  <p>Conecta con veterinarios profesionales desde cualquier lugar. Consultas rápidas, seguras y confiables para tus mascotas.</p>
+  <div class="hero-image">🆘</div>
+  <h1>Wolf SOS</h1>
+  <div class="subtitle">Emergencia Veterinaria Venezuela</div>
+  <p>Iniciativa humanitaria de Wolf GIS y Mi Gente VE para conectar tutores con veterinarios en momentos críticos. Una respuesta de la sociedad civil ante la emergencia veterinaria en Venezuela.</p>
 
   <div class="cta-buttons">
-    <a href="/agenda.html" class="btn btn-primary">📅 Agendar Cita</a>
-    <a href="/admin-login.html" class="btn btn-secondary">👨‍⚕️ Soy Doctor</a>
+    <a href="/agenda.html" class="btn btn-primary">📅 Agendar Consulta</a>
+    <a href="/admin-login.html" class="btn btn-secondary">👨‍⚕️ Acceso Veterinarios</a>
   </div>
 </section>
 
-<!-- FEATURES SECTION -->
-<section class="features" id="features">
-  <h2>¿Por qué Wolf SOS?</h2>
+<!-- INFO SECTION -->
+<section class="info" id="about">
+  <h2>¿Cómo Funciona?</h2>
 
-  <div class="feature-grid">
-    <div class="feature-card">
-      <div class="icon">⏱️</div>
-      <h3>Rápido y Fácil</h3>
-      <p>Agenda tu cita en segundos. Sin esperas innecesarias, solo profesionales veterinarios verificados.</p>
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="icon">👥</div>
+      <h3>Para Tutores</h3>
+      <p>Accede a consultas veterinarias rápidas y seguras. Comunica síntomas de tu mascota y recibe orientación profesional cuando más lo necesites.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">🎥</div>
-      <h3>Consultas por Video</h3>
-      <p>Videollamadas seguras con veterinarios. Muestra los síntomas de tu mascota en tiempo real.</p>
+    <div class="info-card">
+      <div class="icon">⚕️</div>
+      <h3>Para Veterinarios</h3>
+      <p>Ofrece tu disponibilidad y ayuda a la comunidad. Gestiona tu agenda y brinda consultas a través de múltiples canales.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">📱</div>
-      <h3>Disponible 24/7</h3>
-      <p>Encuentra veterinarios disponibles en los horarios que necesites. Disponibilidad flexible.</p>
-    </div>
-
-    <div class="feature-card">
-      <div class="icon">💬</div>
-      <h3>WhatsApp y Más</h3>
-      <p>Múltiples formas de comunicación: video, llamadas o WhatsApp. Tú eliges.</p>
-    </div>
-
-    <div class="feature-card">
+    <div class="info-card">
       <div class="icon">🔒</div>
-      <h3>Seguro y Privado</h3>
-      <p>Tus datos y los de tu mascota están protegidos. Privacidad garantizada.</p>
+      <h3>Seguro y Verificado</h3>
+      <p>Plataforma confiable con veterinarios profesionales verificados. Privacidad garantizada para todos los usuarios.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">⭐</div>
-      <h3>Veterinarios de Confianza</h3>
-      <p>Profesionales verificados con años de experiencia. Solo los mejores para tus mascotas.</p>
+    <div class="info-card">
+      <div class="icon">💬</div>
+      <h3>Múltiples Canales</h3>
+      <p>Video, llamada de voz o WhatsApp. Elige la mejor forma de comunicarte según tu disponibilidad.</p>
+    </div>
+
+    <div class="info-card">
+      <div class="icon">⏰</div>
+      <h3>Horarios Flexibles</h3>
+      <p>Veterinarios definen su propia disponibilidad. Encuentra consultas en los horarios que necesites.</p>
+    </div>
+
+    <div class="info-card">
+      <div class="icon">🤝</div>
+      <h3>Solidaridad</h3>
+      <p>Iniciativa de responsabilidad social. Veterinarios y plataforma trabajan juntos por el bienestar animal en Venezuela.</p>
     </div>
   </div>
 </section>
 
-<!-- STATS SECTION -->
-<section class="stats">
-  <div class="stat-item">
-    <div class="number">2,500+</div>
-    <p>Citas Realizadas</p>
-  </div>
-  <div class="stat-item">
-    <div class="number">50+</div>
-    <p>Veterinarios</p>
-  </div>
-  <div class="stat-item">
-    <div class="number">98%</div>
-    <p>Satisfacción</p>
-  </div>
-  <div class="stat-item">
-    <div class="number">15min</div>
-    <p>Tiempo Promedio</p>
-  </div>
-</section>
+<!-- MISSION SECTION -->
+<section class="mission" id="access">
+  <div class="mission-content">
+    <h2>Una Iniciativa de Emergencia</h2>
+    <p>Ante la crisis veterinaria en Venezuela, Wolf SOS nace como respuesta coordinada de profesionales comprometidos con el bienestar animal. Somos una plataforma de responsabilidad social que conecta a tutores con veterinarios dispuestos a ayudar.</p>
 
-<!-- CTA SECTION -->
-<section class="cta-section" id="cta">
-  <h2>¿Tu mascota necesita atención?</h2>
-  <p>Encuentra el veterinario perfecto en solo unos clics. Seguro, rápido y confiable.</p>
+    <div class="cta-buttons-secondary">
+      <a href="/agenda.html" class="btn-white">Agendar Consulta</a>
+      <a href="/admin-login.html" class="btn-white">Soy Veterinario</a>
+    </div>
 
-  <div class="cta-buttons-secondary">
-    <a href="/agenda.html" class="btn-white">Agendar Ahora</a>
-    <a href="/admin-login.html" class="btn-white">Acceso Veterinarios</a>
+    <div class="mission-logos">
+      <div>
+        <strong>Impulsado por</strong><br>
+        <a href="https://wolfgis.tech" style="color: white; font-weight: 700;">Wolf GIS</a>
+      </div>
+      <div style="opacity: 0.6;">+</div>
+      <div>
+        <a href="https://migenteve.com" style="color: white; font-weight: 700;">Mi Gente VE</a>
+      </div>
+    </div>
   </div>
 </section>
 
 <!-- FOOTER -->
 <footer>
-  <p>🐾 Wolf SOS — Telemedicina Veterinaria | © 2026 <a href="https://wolfgis.tech">Wolf GIS</a></p>
-  <p style="margin-top: 10px; opacity: 0.7;">Powered by Wolf GIS Technology</p>
+  <div class="footer-content">
+    <div class="footer-links">
+      <a href="https://wolfgis.tech">Wolf GIS</a>
+      <a href="https://migenteve.com">Mi Gente VE</a>
+      <span>|</span>
+      <span>🐾 Wolf SOS — Emergencia Veterinaria Venezuela</span>
+    </div>
+    <p>Iniciativa humanitaria de responsabilidad social | © 2026</p>
+  </div>
 </footer>
 
 </body>
