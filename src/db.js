@@ -173,7 +173,7 @@ async function getBookedSlots(vetId, fromMs, toMs) {
     .from('appointments')
     .select('start_ms, end_ms')
     .eq('vet_id', vetId)
-    .eq('status', 'booked')
+    .neq('appointment_status', 'cancelled') // Excluir citas canceladas
     .gte('end_ms', fromMs)
     .lte('start_ms', toMs);
   if (error) throw error;
