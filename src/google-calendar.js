@@ -2,32 +2,30 @@
 
 const { google } = require('googleapis');
 const { DateTime } = require('luxon');
+const db = require('./db');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const GOOGLE_REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
 
-// Crear cliente OAuth autenticado
-function createAuthClient() {
+// Crear cliente OAuth autenticado con token del doctor
+function createAuthClient(refreshToken) {
   const auth = new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
-    'urn:ietf:wg:oauth:2.0:oob' // Redirect URI para desktop apps
+    'urn:ietf:wg:oauth:2.0:oob'
   );
 
   auth.setCredentials({
-    refresh_token: GOOGLE_REFRESH_TOKEN,
+    refresh_token: refreshToken,
   });
 
   return auth;
 }
 
-// Crear evento en Google Calendar CON Google Meet
+// Crear evento en Google Calendar CON Google Meet (usando token del doctor)
 async function createCalendarEvent(eventData) {
-  const auth = createAuthClient();
-  const calendar = google.calendar({ version: 'v3', auth });
-
   const {
+    vetId,
     vetEmail,
     vetName,
     tutorEmail,
@@ -41,6 +39,22 @@ async function createCalendarEvent(eventData) {
     vetTimezone = 'America/Caracas',
   } = eventData;
 
+  // Obtener doctor y su token de Google
+  const vet = await db.getVetById(vetId);
+  if (!vet) {
+    throw new Error(`Veterinarian ${vetId} not found`);
+  }
+
+  if (!vet.google_refresh_token || !vet.google_connected) {
+    throw new Error(
+      `Doctor no tiene Google conectado. Por favor conecta tu cuenta de Google en el panel.`
+    );
+  }
+
+  // Crear cliente autenticado con token del doctor
+  const auth = createAuthClient(vet.google_refresh_token);
+  const calendar = google.calendar({ version: 'v3', auth });
+
   // Formatear fechas para Google Calendar
   const startDt = DateTime.fromMillis(startMs, { zone: vetTimezone });
   const endDt = DateTime.fromMillis(endMs, { zone: vetTimezone });
@@ -48,8 +62,8 @@ async function createCalendarEvent(eventData) {
   // Construir lista de asistentes
   const attendees = [
     {
-      email: vetEmail,
-      displayName: vetName,
+      email: vetEmail || vet.email,
+      displayName: vetName || vet.name,
       responseStatus: 'accepted',
     },
   ];
@@ -71,7 +85,7 @@ Consulta veterinaria para ${animalName}
 📋 Datos de la cita:
 - Modalidad: ${modality}
 - Tutor: ${tutorName}
-- Veterinario: ${vetName}
+- Veterinario: ${vetName || vet.name}
 ${description ? `- Notas: ${description}` : ''}
 
 El enlace de Google Meet se incluirá en la invitación del calendario.
@@ -94,7 +108,7 @@ El enlace de Google Meet se incluirá en la invitación del calendario.
     },
     conferenceData: {
       createRequest: {
-        requestId: appointmentId, // Usar appointmentId como requestId
+        requestId: appointmentId,
         conferenceSolutionKey: {
           key: 'hangoutsMeet',
         },
@@ -103,7 +117,9 @@ El enlace de Google Meet se incluirá en la invitación del calendario.
   };
 
   try {
-    console.log(`📅 [GOOGLE CALENDAR] Creando evento con Meet para cita ${appointmentId}...`);
+    console.log(
+      `📅 [GOOGLE CALENDAR] Creando evento con Meet para cita ${appointmentId} (doctor: ${vet.email})...`
+    );
 
     const response = await calendar.events.insert({
       calendarId: 'primary',
