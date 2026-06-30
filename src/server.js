@@ -314,7 +314,8 @@ app.post('/api/vets/register-complete', async (req, res) => {
       licenseNumber,
       invitation.whatsapp || null,
       location,
-      bio || null
+      bio || null,
+      invitation.name // Pasar nombre de la invitación
     );
 
     console.log(`✅ Vet created: ${vet.id}`);

@@ -71,7 +71,7 @@ async function createVetWithGoogle(email, name, picture, accessToken, refreshTok
   return data;
 }
 
-async function createVetWithPassword(email, passwordHash, specialty, licenseNumber, whatsapp, location, bio) {
+async function createVetWithPassword(email, passwordHash, specialty, licenseNumber, whatsapp, location, bio, name = null) {
   const id = uuidv4();
   const { data, error } = await supabase
     .from('vets')
@@ -79,7 +79,7 @@ async function createVetWithPassword(email, passwordHash, specialty, licenseNumb
       id,
       email,
       password_hash: passwordHash,
-      name: email.split('@')[0], // Usar email como nombre temporal
+      name: name || email.split('@')[0], // Usar nombre de invitación o email como fallback
       picture: null,
       specialty: specialty || null,
       whatsapp: whatsapp || null,
