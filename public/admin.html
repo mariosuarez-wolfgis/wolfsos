@@ -319,23 +319,52 @@
   let authToken = '';
   let vetId = '';
   let vetName = '';
+  let isAdmin = false;
 
   // Recuperar sesión guardada al cargar la página
   window.addEventListener('load', () => {
-    const savedToken = localStorage.getItem('vetToken');
-    const savedVetId = localStorage.getItem('vetId');
-    const savedVetName = localStorage.getItem('vetName');
+    // Intentar login como VET
+    let savedToken = localStorage.getItem('vetToken');
+    let savedVetId = localStorage.getItem('vetId');
+    let savedVetName = localStorage.getItem('vetName');
 
     if (savedToken && savedVetId && savedVetName) {
       authToken = savedToken;
       vetId = savedVetId;
       vetName = savedVetName;
+      isAdmin = false;
 
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('main-panel').style.display = 'block';
       document.getElementById('header-name').textContent = vetName;
+      document.getElementById('analytics-tab').style.display = 'none'; // Ocultar tab de analytics para vets
 
       loadTimeBlocks();
+      return;
+    }
+
+    // Intentar login como ADMIN
+    savedToken = localStorage.getItem('adminToken');
+    if (savedToken) {
+      authToken = savedToken;
+      isAdmin = true;
+      vetId = 'admin'; // Placeholder para admin
+
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('main-panel').style.display = 'block';
+      document.getElementById('header-name').textContent = '👑 Admin';
+      document.getElementById('analytics-tab').style.display = 'block'; // Mostrar tab de analytics para admin
+
+      // Ocultar tabs de vet para admin
+      document.querySelector('[data-tab="tab-schedule"]').style.display = 'none';
+      document.querySelector('[data-tab="tab-timeoff"]').style.display = 'none';
+      document.querySelector('[data-tab="tab-appts"]').style.display = 'none';
+
+      // Mostrar solo Analytics
+      document.querySelector('[data-tab="tab-analytics"]').classList.add('active');
+      document.getElementById('tab-analytics').classList.add('visible');
+      initAnalyticsDatePickers();
+      loadAnalytics();
     }
   });
 
