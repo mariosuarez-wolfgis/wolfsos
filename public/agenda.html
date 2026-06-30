@@ -407,6 +407,12 @@
     btn.textContent = 'Reservando…';
 
     try {
+      console.log('📅 Creando cita:', {
+        vet: selectedVet.id,
+        slot: selectedSlot.startIso,
+        tutor: tutorName,
+      });
+
       const res = await fetch(API + '/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -416,11 +422,20 @@
           modality, tutorName, tutorWhatsapp, animalName, species, urgency, symptoms,
         }),
       });
+
+      console.log(`📊 Respuesta: status ${res.status}`);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al reservar');
+      console.log('✅ Datos:', data);
+
+      if (!res.ok) {
+        console.error('❌ Error:', data);
+        throw new Error(data.error || 'Error al reservar');
+      }
+
       bookingResult = data;
       showConfirmation(data);
     } catch (err) {
+      console.error('❌ Exception:', err);
       showError('form-error', err.message || 'Error al reservar. Intenta de nuevo.');
       btn.disabled = false;
       btn.textContent = 'Confirmar cita ✓';
