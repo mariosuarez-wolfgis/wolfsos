@@ -768,10 +768,10 @@ app.get('/api/vets/:vetId/google/auth-url', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/vets/:vetId/google/callback', async (req, res) => {
+app.get('/api/vets/google/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
-    const vetId = state; // El state es el vetId
+    const vetId = state; // El state es el vetId (pasado en la URL de Google)
 
     if (!code || !vetId) {
       return res.status(400).json({ error: 'Missing code or vetId' });
