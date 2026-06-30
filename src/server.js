@@ -1063,14 +1063,15 @@ app.post('/api/admin/vets/:vetId/time-blocks', requireAuth, async (req, res) => 
       return res.status(400).json({ error: 'startMs and endMs required' });
     }
 
-    // Validar que sea futuro EN LA ZONA HORARIA DEL VET
+    // Validar que sea futuro EN LA ZONA HORARIA DEL VET (con buffer de 2 minutos)
     const tz = vetTimezone || 'America/Caracas';
     const startLocal = DateTime.fromMillis(startMs, { zone: tz });
     const nowLocal = DateTime.now().setZone(tz);
+    const bufferMin = nowLocal.plus({ minutes: 2 });
 
-    if (startLocal <= nowLocal) {
-      console.warn(`⏰ Hora en el pasado: ${startLocal.toISO()} <= ${nowLocal.toISO()}`);
-      return res.status(400).json({ error: 'Start time must be in the future (in your timezone)' });
+    if (startLocal < bufferMin) {
+      console.warn(`⏰ Hora muy pronto: ${startLocal.toISO()} < ${bufferMin.toISO()}`);
+      return res.status(400).json({ error: 'Start time must be at least 2 minutes in the future' });
     }
 
     if (startMs >= endMs) {
