@@ -138,10 +138,11 @@ El enlace de Google Meet estará disponible en la invitación de calendario.
     console.log(`✅ [GOOGLE CALENDAR] Evento creado: ${createdEvent.id}`);
 
     // 2. Actualizar evento AGREGANDO conferencia
+    // Usar un requestId único para el PATCH
     const eventUpdate = {
       conferenceData: {
         createRequest: {
-          requestId: appointmentId,
+          requestId: uuidv4(),
           conferenceSolutionKey: {
             key: 'hangoutsMeet',
           },
@@ -158,16 +159,16 @@ El enlace de Google Meet estará disponible en la invitación de calendario.
       body: JSON.stringify(eventUpdate),
     });
 
-    if (!updateRes.ok) {
+    let meetLink = null;
+    if (updateRes.ok) {
+      const updatedEvent = await updateRes.json();
+      meetLink = updatedEvent.conferenceData?.entryPoints?.[0]?.uri || null;
+      console.log(`✅ Conferencia agregada exitosamente. Meet link: ${meetLink}`);
+    } else {
       const updateErr = await updateRes.json();
       console.warn(`⚠️  No se pudo agregar conferencia: ${updateErr.error?.message || JSON.stringify(updateErr)}`);
-    } else {
-      console.log(`✅ Conferencia agregada exitosamente`);
+      console.log(`📹 [GOOGLE CALENDAR] Usando Meet link del evento creado (sin conferencia)`);
     }
-
-    const updatedEvent = await updateRes.json();
-    const meetLink = updatedEvent.conferenceData?.entryPoints?.[0]?.uri || null;
-    console.log(`📹 [GOOGLE CALENDAR] Meet link obtenido: ${meetLink || 'null'}`);
 
     return {
       eventId: createdEvent.id,
