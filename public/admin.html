@@ -175,6 +175,16 @@
     </nav>
 
     <div class="panel visible" id="tab-schedule">
+      <!-- Google Connection Status -->
+      <div id="google-status" style="background: #f0f9ff; border-left: 4px solid #2563eb; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 0.85rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span id="google-status-text">🔌 Conectar tu cuenta de Google para generar Meet links automáticamente</span>
+          </div>
+          <button id="btn-connect-google" class="btn btn-sm" style="background: #2563eb; color: white; padding: 8px 16px;">Conectar</button>
+        </div>
+      </div>
+
       <h2>Mis bloques de disponibilidad</h2>
       <p style="font-size:.8rem;color:#666;margin-bottom:16px">Agrega los horarios en los que puedes atender citas. Puedes agregar múltiples bloques.</p>
       <div id="sched-error" class="error-msg" style="display:none"></div>
@@ -547,6 +557,7 @@
       const data = await res.json();
       console.log(`✅ Bloques cargados:`, data.blocks);
       renderTimeBlocks(data.blocks);
+      updateGoogleStatus(); // Mostrar estado de Google
     } catch (e) {
       console.error(`❌ Error loading time blocks:`, e);
       showErr('sched-error', `Error cargando bloques: ${e.message}`);
@@ -1106,6 +1117,67 @@
     document.getElementById('analytics-from').valueAsDate = from;
     document.getElementById('analytics-to').valueAsDate = to;
   }
+
+  // --- GOOGLE OAUTH ---
+  let googleConnected = localStorage.getItem('googleConnected') === 'true';
+
+  function updateGoogleStatus() {
+    const statusEl = document.getElementById('google-status');
+    const statusText = document.getElementById('google-status-text');
+    const connectBtn = document.getElementById('btn-connect-google');
+
+    if (googleConnected) {
+      statusEl.style.background = '#f0fdf4';
+      statusEl.style.borderLeftColor = '#16a34a';
+      statusText.innerHTML = '✅ Google conectado - Los Meet links se generarán automáticamente';
+      connectBtn.style.display = 'none';
+    } else {
+      statusEl.style.background = '#fef3c7';
+      statusEl.style.borderLeftColor = '#f59e0b';
+      statusText.innerHTML = '⚠️ Google no está conectado - Las citas no tendrán Meet link automático';
+      connectBtn.style.display = 'inline-block';
+    }
+  }
+
+  document.getElementById('btn-connect-google')?.addEventListener('click', async () => {
+    try {
+      if (!vetId) {
+        showErr('sched-error', 'Error: Debes estar autenticado como doctor');
+        return;
+      }
+
+      // Solicitar URL de autenticación de Google
+      const response = await fetch(`${API}/api/vets/${vetId}/google/auth-url`, {
+        headers: { 'Authorization': `Bearer ${authToken}` },
+      });
+
+      if (!response.ok) throw new Error('Error obteniendo URL de Google');
+
+      const { authUrl } = await response.json();
+
+      // Redirigir a Google OAuth
+      window.location.href = authUrl;
+    } catch (err) {
+      showErr('sched-error', `Error: ${err.message}`);
+    }
+  });
+
+  // Verificar si hay parámetros de callback de Google OAuth
+  window.addEventListener('load', () => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('google_connected') === 'true') {
+      googleConnected = true;
+      localStorage.setItem('googleConnected', 'true');
+      updateGoogleStatus();
+      showSuccessMsg('sched-success', '✓ Google conectado exitosamente');
+      // Limpiar URL
+      window.history.replaceState({}, document.title, location.pathname);
+    } else if (params.get('google_error')) {
+      const error = decodeURIComponent(params.get('google_error'));
+      showErr('sched-error', `Error conectando Google: ${error}`);
+      window.history.replaceState({}, document.title, location.pathname);
+    }
+  });
 
   // --- UTILS ---
   function minToTime(m) {
