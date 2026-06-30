@@ -1232,6 +1232,7 @@ app.get('/api/admin/vets', requireAdmin, async (req, res) => {
       whatsapp: v.whatsapp,
       location: v.location,
       picture: v.picture,
+      active: v.active || false,
     })));
   } catch (err) {
     res.status(500).json({ error: err.message });
