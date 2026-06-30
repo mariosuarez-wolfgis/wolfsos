@@ -6,7 +6,6 @@ const express = require('express');
 const path = require('node:path');
 const db = require('./db');
 const googleAuth = require('./google-auth');
-const { verifyFirebaseToken } = require('./firebase-auth');
 const adminService = require('./admin-service');
 const { generateSlots } = require('./slots');
 const { buildIcs, buildWhatsappLink } = require('./format');
