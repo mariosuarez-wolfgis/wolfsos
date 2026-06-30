@@ -853,7 +853,12 @@ app.get('/api/admin/vets/:vetId/appointments', requireAuth, async (req, res) => 
     const vet = await db.getVetById(req.params.vetId);
     if (!vet) return res.status(404).json({ error: 'Veterinarian not found' });
 
-    const appointments = await db.listAppointments(req.params.vetId, Date.now());
+    const { status } = req.query;
+    const appointments = await db.listAppointmentsByStatus(
+      req.params.vetId,
+      status || null,
+      Date.now() - 7 * 86400000
+    );
     const tz = vet.timezone || 'America/Caracas';
 
     res.json(appointments.map(a => ({
@@ -871,8 +876,74 @@ app.get('/api/admin/vets/:vetId/appointments', requireAuth, async (req, res) => 
       modality: a.modality,
       urgency: a.urgency,
       symptoms: a.symptoms,
-      meetLink: a.meet_link,
+      status: a.appointment_status || 'booked',
+      statusUpdatedAt: a.status_updated_at,
+      vetNotes: a.vet_notes,
+      cancellationReason: a.cancellation_reason,
+      noShowReason: a.no_show_reason,
     })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// VET APPOINTMENT STATUS UPDATE
+// ============================================
+
+app.put('/api/vets/:vetId/appointments/:appointmentId/status', requireAuth, async (req, res) => {
+  try {
+    const { vetId, appointmentId } = req.params;
+    const { status, reason, notes } = req.body;
+
+    // Verificar que sea el mismo vet
+    if (req.vetId !== vetId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Validar status
+    if (!['booked', 'attended', 'no_show', 'cancelled'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    // Obtener cita
+    const appointment = await db.getAppointment(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    if (appointment.vet_id !== vetId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Actualizar
+    const updated = await db.updateAppointmentStatus(
+      appointmentId,
+      vetId,
+      status,
+      reason,
+      notes
+    );
+
+    res.json({ success: true, appointment: updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// VET STATS
+// ============================================
+
+app.get('/api/vets/:vetId/stats', requireAuth, async (req, res) => {
+  try {
+    // Verificar que sea el mismo vet
+    if (req.vetId !== req.params.vetId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const stats = await db.getVetAppointmentStats(req.params.vetId);
+    res.json(stats);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1085,6 +1156,45 @@ app.get('/api/admin/appointments', requireAdmin, async (req, res) => {
     }));
 
     res.json(appointments);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// ADMIN ANALYTICS
+// ============================================
+
+app.get('/api/admin/stats/summary', requireAdmin, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const fromMs = from ? parseInt(from) : Date.now() - 30 * 86400000;
+    const toMs = to ? parseInt(to) : Date.now();
+
+    const stats = await db.getAllAppointmentStats(fromMs, toMs);
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/stats/by-vet', requireAdmin, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const fromMs = from ? parseInt(from) : Date.now() - 30 * 86400000;
+    const toMs = to ? parseInt(to) : Date.now();
+
+    const stats = await db.getAllVetsStats(fromMs, toMs);
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/alerts', requireAdmin, async (req, res) => {
+  try {
+    const alerts = await db.getAdminAlerts();
+    res.json(alerts);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

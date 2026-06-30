@@ -439,6 +439,137 @@ async function getAdminStats() {
   }
 }
 
+// --- APPOINTMENT STATUS (Nuevo) ---
+
+async function updateAppointmentStatus(appointmentId, vetId, newStatus, reason = null, notes = null) {
+  const { data, error } = await supabase
+    .from('appointments')
+    .update({
+      appointment_status: newStatus,
+      status_updated_at: Date.now(),
+      status_updated_by: vetId,
+      cancellation_reason: newStatus === 'cancelled' ? reason : null,
+      no_show_reason: newStatus === 'no_show' ? reason : null,
+      vet_notes: notes || null,
+    })
+    .eq('id', appointmentId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function listAppointmentsByStatus(vetId, status = null, fromMs = null) {
+  let query = supabase
+    .from('appointments')
+    .select('*')
+    .eq('vet_id', vetId);
+
+  if (status) {
+    query = query.eq('appointment_status', status);
+  }
+
+  if (fromMs) {
+    query = query.gte('start_ms', fromMs);
+  }
+
+  const { data, error } = await query.order('start_ms', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+async function getVetAppointmentStats(vetId, fromMs = null, toMs = null) {
+  let query = supabase
+    .from('appointments')
+    .select('appointment_status');
+
+  query = query.eq('vet_id', vetId);
+
+  if (fromMs) query = query.gte('start_ms', fromMs);
+  if (toMs) query = query.lt('start_ms', toMs);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const attended = data.filter(a => a.appointment_status === 'attended').length;
+  const noShow = data.filter(a => a.appointment_status === 'no_show').length;
+  const cancelled = data.filter(a => a.appointment_status === 'cancelled').length;
+  const booked = data.filter(a => !a.appointment_status || a.appointment_status === 'booked').length;
+
+  return {
+    attended,
+    no_show: noShow,
+    cancelled,
+    booked,
+    total: data.length,
+    attendanceRate: attended + noShow > 0 ? Math.round((attended / (attended + noShow)) * 100) : null,
+  };
+}
+
+async function getAllAppointmentStats(fromMs = null, toMs = null) {
+  let query = supabase.from('appointments').select('appointment_status');
+
+  if (fromMs) query = query.gte('start_ms', fromMs);
+  if (toMs) query = query.lt('start_ms', toMs);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const attended = data.filter(a => a.appointment_status === 'attended').length;
+  const noShow = data.filter(a => a.appointment_status === 'no_show').length;
+  const cancelled = data.filter(a => a.appointment_status === 'cancelled').length;
+
+  return { attended, no_show: noShow, cancelled, total: data.length };
+}
+
+async function getAllVetsStats(fromMs = null, toMs = null) {
+  const vets = await listVets();
+  const stats = {};
+
+  for (const vet of vets) {
+    stats[vet.id] = {
+      vetName: vet.name,
+      vetEmail: vet.email,
+      ...(await getVetAppointmentStats(vet.id, fromMs, toMs))
+    };
+  }
+
+  return stats;
+}
+
+async function getAdminAlerts() {
+  const weekAgoMs = Date.now() - 7 * 86400000;
+  const vets = await listVets();
+  const alerts = [];
+
+  for (const vet of vets) {
+    const stats = await getVetAppointmentStats(vet.id, weekAgoMs);
+
+    if (stats.total < 5) {
+      alerts.push({
+        vetId: vet.id,
+        vetName: vet.name,
+        type: 'low_activity',
+        message: `Solo ${stats.total} citas en última semana`,
+        severity: 'warning',
+      });
+    }
+
+    if (stats.attended + stats.no_show > 0 && stats.no_show > stats.attended) {
+      const noShowRate = Math.round((stats.no_show / (stats.attended + stats.no_show)) * 100);
+      alerts.push({
+        vetId: vet.id,
+        vetName: vet.name,
+        type: 'high_no_show_rate',
+        message: `Tasa de no-show: ${noShowRate}%`,
+        severity: 'critical',
+      });
+    }
+  }
+
+  return alerts;
+}
+
 module.exports = {
   supabase,
   // Vets
@@ -474,4 +605,11 @@ module.exports = {
   getInvitationByToken,
   updateInvitation,
   getAdminStats,
+  // Appointment Status
+  updateAppointmentStatus,
+  listAppointmentsByStatus,
+  getVetAppointmentStats,
+  getAllAppointmentStats,
+  getAllVetsStats,
+  getAdminAlerts,
 };
