@@ -245,6 +245,27 @@ app.post('/api/vets/login', async (req, res) => {
 // VET REGISTER (Completo - Con datos profesionales)
 // ============================================
 
+// Obtener datos de invitación para pre-rellenar formulario
+app.get('/api/vets/invitation-data', async (req, res) => {
+  try {
+    const token = req.query.token;
+    if (!token) return res.status(400).json({ error: 'Token required' });
+
+    const invitation = await db.getInvitationByToken(token);
+    if (!invitation) return res.status(404).json({ error: 'Invalid token' });
+    if (invitation.used) return res.status(400).json({ error: 'Invitation already used' });
+    if (new Date(invitation.expires_at) < new Date()) return res.status(400).json({ error: 'Invitation expired' });
+
+    res.json({
+      email: invitation.email,
+      name: invitation.name || '',
+      whatsapp: invitation.whatsapp || '',
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/vets/register-complete', async (req, res) => {
   try {
     const { password, invitationToken, specialty, licenseNumber, location, bio } = req.body;

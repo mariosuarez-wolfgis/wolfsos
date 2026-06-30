@@ -16,6 +16,8 @@ async function inviteVet(adminId, vetData) {
   const invitation = await db.createInvitation({
     token,
     email: vetData.email,
+    name: vetData.name,
+    whatsapp: vetData.whatsapp,
     invitedBy: adminId,
   });
 

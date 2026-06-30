@@ -419,6 +419,8 @@ async function createInvitation(data) {
       id: uuidv4(),
       token: data.token,
       email: data.email,
+      name: data.name || null,
+      whatsapp: data.whatsapp || null,
       invited_by: data.invitedBy,
     }])
     .select()
