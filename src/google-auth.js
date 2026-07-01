@@ -6,11 +6,16 @@ const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost
 
 // Generar URL de autorización de Google
 function getAuthUrl(vetId) {
+  const scopes = [
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/meetings.space.created',
+  ];
+
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: GOOGLE_REDIRECT_URI,
     response_type: 'code',
-    scope: 'https://www.googleapis.com/auth/calendar',
+    scope: scopes.join(' '),
     access_type: 'offline',
     prompt: 'consent', // Forzar que pida permiso cada vez
     state: vetId, // Pasar vetId para verificar después
