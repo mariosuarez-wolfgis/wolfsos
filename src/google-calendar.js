@@ -78,8 +78,8 @@ async function createCalendarEvent(eventData) {
   }
 
   try {
-    // Crear espacio de reunión en Google Meet API
-    const meetSpace = await googleMeet.createMeetingSpace();
+    // Crear espacio de reunión en Google Meet API usando token del doctor
+    const meetSpace = await googleMeet.createMeetingSpace(vet.google_refresh_token);
     const meetLink = meetSpace.meetLink;
 
     console.log(`📅 [GOOGLE CALENDAR] Creando evento para cita ${appointmentId}...`);

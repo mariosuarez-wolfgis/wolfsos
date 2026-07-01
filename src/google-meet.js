@@ -6,8 +6,8 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
 
-// Crear cliente OAuth autenticado con token de sistema
-function createAuthClient() {
+// Crear cliente OAuth autenticado con refresh token
+function createAuthClient(refreshToken) {
   const auth = new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
@@ -15,15 +15,19 @@ function createAuthClient() {
   );
 
   auth.setCredentials({
-    refresh_token: GOOGLE_REFRESH_TOKEN,
+    refresh_token: refreshToken,
   });
 
   return auth;
 }
 
 // Crear espacio de reunión en Google Meet API v2
-async function createMeetingSpace() {
-  const auth = createAuthClient();
+async function createMeetingSpace(refreshToken) {
+  if (!refreshToken) {
+    throw new Error('Refresh token requerido para crear espacio de Meet');
+  }
+
+  const auth = createAuthClient(refreshToken);
 
   try {
     console.log(`📹 [GOOGLE MEET] Creando espacio de reunión...`);
