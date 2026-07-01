@@ -181,7 +181,10 @@
           <div>
             <span id="google-status-text">🔌 Conectar tu cuenta de Google para generar Meet links automáticamente</span>
           </div>
-          <button id="btn-connect-google" class="btn btn-sm" style="background: #2563eb; color: white; padding: 8px 16px;">Conectar</button>
+          <div style="display: flex; gap: 8px;">
+            <button id="btn-connect-google" class="btn btn-sm" style="background: #2563eb; color: white; padding: 8px 16px;">Conectar</button>
+            <button id="btn-disconnect-google" class="btn btn-sm" style="background: #ef4444; color: white; padding: 8px 16px; display: none;">Desconectar</button>
+          </div>
         </div>
       </div>
 
@@ -1125,17 +1128,20 @@
     const statusEl = document.getElementById('google-status');
     const statusText = document.getElementById('google-status-text');
     const connectBtn = document.getElementById('btn-connect-google');
+    const disconnectBtn = document.getElementById('btn-disconnect-google');
 
     if (googleConnected) {
       statusEl.style.background = '#f0fdf4';
       statusEl.style.borderLeftColor = '#16a34a';
       statusText.innerHTML = '✅ Google conectado - Los Meet links se generarán automáticamente';
       connectBtn.style.display = 'none';
+      disconnectBtn.style.display = 'inline-block';
     } else {
       statusEl.style.background = '#fef3c7';
       statusEl.style.borderLeftColor = '#f59e0b';
       statusText.innerHTML = '⚠️ Google no está conectado - Las citas no tendrán Meet link automático';
       connectBtn.style.display = 'inline-block';
+      disconnectBtn.style.display = 'none';
     }
   }
 
@@ -1157,6 +1163,29 @@
 
       // Redirigir a Google OAuth
       window.location.href = authUrl;
+    } catch (err) {
+      showErr('sched-error', `Error: ${err.message}`);
+    }
+  });
+
+  document.getElementById('btn-disconnect-google')?.addEventListener('click', async () => {
+    try {
+      if (!vetId) {
+        showErr('sched-error', 'Error: Debes estar autenticado como doctor');
+        return;
+      }
+
+      const response = await fetch(`${API}/api/vets/${vetId}/google/disconnect`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${authToken}` },
+      });
+
+      if (!response.ok) throw new Error('Error desconectando Google');
+
+      googleConnected = false;
+      localStorage.setItem('googleConnected', 'false');
+      updateGoogleStatus();
+      showSuccessMsg('sched-success', '✓ Google desconectado. Puedes conectar una cuenta diferente.');
     } catch (err) {
       showErr('sched-error', `Error: ${err.message}`);
     }
