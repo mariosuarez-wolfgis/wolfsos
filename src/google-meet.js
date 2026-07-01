@@ -32,15 +32,15 @@ async function createMeetingSpace(refreshToken) {
   try {
     console.log(`📹 [GOOGLE MEET] Creando espacio de reunión...`);
 
+    const accessToken = await auth.getAccessToken();
+
     const response = await fetch('https://meet.googleapis.com/v2/spaces', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${(await auth.getAccessToken()).token}`,
+        'Authorization': `Bearer ${accessToken.token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        space: {},
-      }),
+      body: JSON.stringify({}),
     });
 
     if (!response.ok) {
